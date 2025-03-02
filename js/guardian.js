@@ -204,6 +204,52 @@ class Guardian {
     // Upgrade bullet damage
     upgradeDamage() {
         this.damage++;
+        
+        // 创建升级效果
+        if (window.game && window.game.particleSystem) {
+            // 创建升级特效
+            const centerX = this.x + this.width / 2;
+            const centerY = this.y + this.height / 2;
+            
+            // 根据新的伤害等级设置特效颜色
+            let effectColor;
+            if (this.damage >= 5) {
+                effectColor = 'rgba(231, 76, 60, 0.8)'; // 红色，高伤害
+            } else if (this.damage >= 3) {
+                effectColor = 'rgba(243, 156, 18, 0.8)'; // 橙色，中等伤害
+            } else {
+                effectColor = 'rgba(241, 196, 15, 0.8)'; // 黄色，基础伤害
+            }
+            
+            // 创建爆发特效
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3;
+                const size = 2 + Math.random() * 4;
+                
+                window.game.particleSystem.addParticle(
+                    centerX,
+                    centerY,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    effectColor,
+                    size,
+                    30 + Math.random() * 20
+                );
+            }
+            
+            // 创建文字提示
+            window.game.particleSystem.createText(
+                centerX,
+                centerY - 30,
+                `攻击力提升! Lv.${this.damage}`,
+                effectColor,
+                16,
+                60
+            );
+        }
+        
+        return this.damage;
     }
 
     // Get upgrade cost for weapon

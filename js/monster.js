@@ -12,35 +12,43 @@ class Monster {
         this.hitAnimationTimer = 0;
         this.wave = wave;
         
-        // Set properties based on monster type
-        switch(type) {
-            case 'elite':
-                this.width = 70;
-                this.height = 70;
-                this.speed = 1.5;
-                this.health = 10 + Math.floor(wave / 10) * 5; // Base health + increase per 10 waves
-                this.color = '#e74c3c'; // Red
-                this.outlineColor = '#c0392b'; // Dark red
-                break;
-                
-            case 'boss':
-                this.width = 120;
-                this.height = 120;
-                this.speed = 0.8;
-                this.health = 50 + Math.floor(wave / 10) * 20; // Base health + increase per 10 waves
-                this.color = '#9b59b6'; // Purple
-                this.outlineColor = '#8e44ad'; // Dark purple
-                this.attackTimer = 0;
-                this.attackInterval = 180; // Attack every 3 seconds at 60fps
-                break;
-                
-            default: // normal monster
-                this.width = 50;
-                this.height = 50;
-                this.speed = 2;
-                this.health = 5 + Math.floor(wave / 10) * 2; // Base health + increase per 10 waves
-                this.color = '#3498db'; // Blue
-                this.outlineColor = '#2980b9'; // Dark blue
+        // 所有非BOSS怪物使用相同的大小
+        if (type === 'boss') {
+            this.width = 120;
+            this.height = 120;
+            this.speed = 0.8;
+            this.health = 50 + Math.floor(wave / 10) * 20; // Base health + increase per 10 waves
+            this.color = '#9b59b6'; // Purple
+            this.outlineColor = '#8e44ad'; // Dark purple
+            this.attackTimer = 0;
+            this.attackInterval = 180; // Attack every 3 seconds at 60fps
+        } else {
+            // 所有普通怪物和精英怪物使用相同的大小
+            this.width = 50;
+            this.height = 50;
+            
+            // 根据类型设置不同的属性
+            switch(type) {
+                case 'elite':
+                    this.speed = 1.5;
+                    this.health = 10 + Math.floor(wave / 10) * 5; // Base health + increase per 10 waves
+                    this.color = '#e74c3c'; // Red
+                    this.outlineColor = '#c0392b'; // Dark red
+                    break;
+                    
+                case 'minion':
+                    this.speed = 2.5;
+                    this.health = 3 + Math.floor(wave / 10); // Base health + increase per 10 waves
+                    this.color = '#2ecc71'; // Green
+                    this.outlineColor = '#27ae60'; // Dark green
+                    break;
+                    
+                default: // normal monster
+                    this.speed = 2;
+                    this.health = 5 + Math.floor(wave / 10) * 2; // Base health + increase per 10 waves
+                    this.color = '#3498db'; // Blue
+                    this.outlineColor = '#2980b9'; // Dark blue
+            }
         }
         
         // Store max health for health bar
@@ -287,24 +295,42 @@ class MonsterFactory {
     // Create a wave of monsters
     static createWave(canvasWidth, wave, count = 5) {
         const monsters = [];
-        let monsterType = 'normal';
         
-        // Determine monster type based on wave number
+        // 确定这一波是否是BOSS波
         if (wave % 10 === 0) {
-            monsterType = 'boss';
-            count = 1; // Only one boss
-        } else if (wave % 5 === 0) {
-            monsterType = 'elite';
-            count = 3; // Fewer elite monsters
+            // BOSS波只有一个BOSS
+            const x = canvasWidth / 2 - 60; // 居中放置BOSS
+            const y = -120; // 开始于屏幕上方
+            monsters.push(new Monster(x, y, 'boss', wave));
+            return monsters;
         }
         
-        // Calculate spacing between monsters
+        // 计算怪物之间的间距
         const spacing = canvasWidth / (count + 1);
         
-        // Create monsters in a row
+        // 根据波次确定怪物类型的分布
+        let eliteChance = Math.min(0.1 + (wave * 0.02), 0.4); // 精英怪物出现概率随波次增加，最高40%
+        let minionChance = Math.min(0.15 + (wave * 0.01), 0.3); // 小怪出现概率随波次增加，最高30%
+        
+        // 创建一排怪物，随机分配类型
         for (let i = 0; i < count; i++) {
-            const x = spacing * (i + 1);
-            const y = -100; // Start above the screen
+            const x = spacing * (i + 1) - 25; // 居中放置怪物
+            const y = -100 - (Math.random() * 50); // 开始于屏幕上方，有些随机高度差异
+            
+            // 随机决定怪物类型
+            let monsterType = 'normal';
+            const typeRoll = Math.random();
+            
+            if (typeRoll < eliteChance) {
+                monsterType = 'elite';
+            } else if (typeRoll < eliteChance + minionChance) {
+                monsterType = 'minion';
+            }
+            
+            // 每5波增加一个精英怪的概率
+            if (wave % 5 === 0 && i === Math.floor(count / 2)) {
+                monsterType = 'elite'; // 中间位置强制为精英怪
+            }
             
             monsters.push(new Monster(x, y, monsterType, wave));
         }

@@ -16,7 +16,23 @@ class Bullet {
                 this.width = 8;
                 this.height = 16;
                 this.speed = 10;
-                this.color = '#f1c40f';
+                
+                // 根据伤害值设置不同的子弹效果
+                if (damage >= 5) {
+                    this.color = '#e74c3c'; // 红色，高伤害
+                    this.trailColor = 'rgba(231, 76, 60, 0.5)';
+                    this.hasTrail = true;
+                    this.trailLength = 3;
+                } else if (damage >= 3) {
+                    this.color = '#f39c12'; // 橙色，中等伤害
+                    this.trailColor = 'rgba(243, 156, 18, 0.5)';
+                    this.hasTrail = true;
+                    this.trailLength = 2;
+                } else {
+                    this.color = '#f1c40f'; // 黄色，基础伤害
+                    this.trailColor = 'rgba(241, 196, 15, 0.3)';
+                    this.hasTrail = false;
+                }
                 break;
                 
             case 'dragon_straight':
@@ -70,12 +86,16 @@ class Bullet {
         }
     }
 
-    // Update bullet position
+    // Update bullet position and state
     update() {
         if (!this.active) return;
         
+        // Move bullet based on type
         switch(this.type) {
             case 'guardian':
+                this.y -= this.speed;
+                break;
+                
             case 'dragon_straight':
                 // Move straight up
                 this.y -= this.speed;
@@ -122,8 +142,26 @@ class Bullet {
         }
         
         // Check if bullet is off screen
-        if (this.y < -this.height) {
+        if (this.y < -this.height || this.y > 600 + this.height || 
+            this.x < -this.width || this.x > 400 + this.width) {
             this.active = false;
+        }
+        
+        // 为高等级子弹创建粒子拖尾效果
+        if (this.hasTrail && Math.random() < 0.5) {
+            // 这里我们假设游戏中有一个全局的粒子系统
+            // 在实际实现中，你需要确保这个粒子系统存在
+            if (window.game && window.game.particleSystem) {
+                window.game.particleSystem.addParticle(
+                    this.x + this.width / 2,
+                    this.y + this.height,
+                    (Math.random() - 0.5) * 2,
+                    Math.random() * 2,
+                    this.trailColor,
+                    3,
+                    10
+                );
+            }
         }
     }
 
@@ -135,20 +173,39 @@ class Bullet {
         
         switch(this.type) {
             case 'guardian':
-                // Draw guardian bullet (teardrop shape)
-                context.beginPath();
-                context.moveTo(this.x + this.width / 2, this.y);
-                context.lineTo(this.x + this.width, this.y + this.height / 2);
-                context.lineTo(this.x + this.width / 2, this.y + this.height);
-                context.lineTo(this.x, this.y + this.height / 2);
-                context.closePath();
-                context.fill();
-                
-                // Add glow effect
-                context.shadowColor = this.color;
-                context.shadowBlur = 5;
-                context.fill();
-                context.shadowBlur = 0;
+                // 根据伤害值绘制不同的子弹效果
+                if (this.damage >= 5) {
+                    // 高伤害子弹 - 更大、有光晕效果
+                    // 绘制光晕
+                    context.fillStyle = 'rgba(231, 76, 60, 0.3)';
+                    context.beginPath();
+                    context.arc(this.x + this.width / 2, this.y + this.height / 2, 12, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    // 绘制子弹主体
+                    context.fillStyle = this.color;
+                    context.beginPath();
+                    context.moveTo(this.x, this.y + this.height);
+                    context.lineTo(this.x + this.width / 2, this.y);
+                    context.lineTo(this.x + this.width, this.y + this.height);
+                    context.closePath();
+                    context.fill();
+                } else if (this.damage >= 3) {
+                    // 中等伤害子弹 - 略大、有简单光晕
+                    // 绘制简单光晕
+                    context.fillStyle = 'rgba(243, 156, 18, 0.2)';
+                    context.beginPath();
+                    context.arc(this.x + this.width / 2, this.y + this.height / 2, 8, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    // 绘制子弹主体
+                    context.fillStyle = this.color;
+                    context.fillRect(this.x, this.y, this.width, this.height);
+                } else {
+                    // 基础伤害子弹 - 简单矩形
+                    context.fillStyle = this.color;
+                    context.fillRect(this.x, this.y, this.width, this.height);
+                }
                 break;
                 
             case 'dragon_straight':
