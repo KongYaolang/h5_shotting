@@ -284,6 +284,14 @@ class ItemDropManager {
                 permUpgradeChance = 0.1 + waveBonus; // 10% + wave bonus
                 break;
                 
+            case 'minion':
+                coinChance = 0.5 + waveBonus; // 50% + wave bonus
+                powerupChance = 0.05 + waveBonus; // 5% + wave bonus
+                permUpgradeChance = 0; // Minions don't drop permanent upgrades
+                if (coinChance > 0.6) coinChance = 0.6;
+                if (powerupChance > 0.1) powerupChance = 0.1;
+                break;
+                
             default: // normal monster
                 coinChance = 0.6 + waveBonus; // 60% + wave bonus, max 70%
                 powerupChance = 0.1 + waveBonus; // 10% + wave bonus, max 15%
@@ -335,13 +343,11 @@ class ItemDropManager {
         
         const drops = [];
         const { x, y, width, height } = monster;
-        let monsterType = 'normal';
+        let monsterType = monster.type || 'normal';
         
-        // Determine monster type
-        if (monster instanceof Boss) {
+        // Determine monster type if not explicitly set
+        if (monster.type === 'boss') {
             monsterType = 'boss';
-        } else if (waveNumber % 5 === 0 && monster.health > 3) {
-            monsterType = 'elite';
         }
         
         const { coinChance, powerupChance, permUpgradeChance } = this.calculateDropChance(monsterType, waveNumber);
@@ -356,6 +362,9 @@ class ItemDropManager {
                     break;
                 case 'elite':
                     coinCount = randomBetween(3, 6);
+                    break;
+                case 'minion':
+                    coinCount = randomBetween(1, 2);
                     break;
                 default:
                     coinCount = randomBetween(1, 3);

@@ -91,7 +91,7 @@ class UIManager {
                 context,
                 this.game.width - 30,
                 powerupY,
-                'Shield',
+                '无敌护盾',
                 this.game.powerupEffects.shield.duration,
                 '#3498db'
             );
@@ -103,20 +103,20 @@ class UIManager {
                 context,
                 this.game.width - 30,
                 powerupY,
-                'Damage',
+                '子弹强化',
                 this.game.powerupEffects.damage.duration,
                 '#e74c3c'
             );
             powerupY += 30;
         }
         
-        if (this.game.powerupEffects.speed.active) {
+        if (this.game.powerupEffects.dragonRage.active) {
             this.drawPowerupIndicator(
                 context,
                 this.game.width - 30,
                 powerupY,
-                'Speed',
-                this.game.powerupEffects.speed.duration,
+                '龙怒',
+                this.game.powerupEffects.dragonRage.duration,
                 '#9b59b6'
             );
             powerupY += 30;
@@ -127,7 +127,7 @@ class UIManager {
                 context,
                 this.game.width - 30,
                 powerupY,
-                'Magnet',
+                '金币磁铁',
                 this.game.powerupEffects.coinMagnet.duration,
                 '#f39c12'
             );
@@ -235,49 +235,86 @@ class UIManager {
         let maxDuration;
         
         // Set max duration based on powerup type
-        switch(name.toUpperCase()) {
-            case 'SHIELD':
+        switch(name) {
+            case '无敌护盾':
                 maxDuration = 300; // 5 seconds at 60fps
                 break;
-            case 'DAMAGE':
+            case '子弹强化':
                 maxDuration = 600; // 10 seconds at 60fps
                 break;
-            case 'DRAGON_RAGE':
+            case '龙怒':
                 maxDuration = 300; // 5 seconds at 60fps
                 break;
-            case 'MAGNET':
+            case '金币磁铁':
                 maxDuration = 900; // 15 seconds at 60fps
                 break;
             default:
                 maxDuration = 300;
         }
         
-        const durationPercentage = duration / maxDuration;
+        const barWidth = (duration / maxDuration) * maxWidth;
         
-        context.fillStyle = '#7f8c8d';
-        context.fillRect(x - 80, y + 10, maxWidth, 3);
+        // Draw background
+        context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        context.fillRect(x - 80, y + 10, maxWidth, 5);
         
+        // Draw fill
         context.fillStyle = color;
-        context.fillRect(x - 80, y + 10, maxWidth * durationPercentage, 3);
+        context.fillRect(x - 80, y + 10, barWidth, 5);
+        
+        // Draw time remaining
+        const secondsRemaining = Math.ceil(duration / 60);
+        context.fillStyle = '#ffffff';
+        context.font = '12px Arial';
+        context.fillText(`${secondsRemaining}s`, x - 85, y + 15);
     }
 
-    // Draw upgrade progress
-    drawUpgradeProgress(context, x, y, name, current, required, color) {
+    // Draw permanent upgrade progress
+    drawUpgradeProgress(context, x, y, name, current, max, color) {
+        // Set max values based on upgrade type
+        let maxValue;
+        let displayName;
+        
+        switch(name) {
+            case 'Weapon':
+                maxValue = 10; // 10 fragments for weapon upgrade
+                displayName = '武器碎片';
+                break;
+            case 'Dragon':
+                maxValue = 5; // 5 souls for dragon upgrade
+                displayName = '龙魂';
+                break;
+            case 'Life':
+                maxValue = 5; // 5 crystals for life upgrade
+                displayName = '生命水晶';
+                break;
+            default:
+                maxValue = max;
+                displayName = name;
+        }
+        
         // Draw name
         context.fillStyle = '#ffffff';
         context.font = '14px Arial';
         context.textAlign = 'left';
-        context.fillText(`${name}: ${current}/${required}`, x, y);
+        context.fillText(displayName, x, y);
         
         // Draw progress bar
-        const maxWidth = 100;
-        const progressPercentage = current / required;
+        const barWidth = 100;
+        const progress = Math.min(current / maxValue, 1);
         
-        context.fillStyle = '#7f8c8d';
-        context.fillRect(x + 100, y - 10, maxWidth, 5);
+        // Draw background
+        context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        context.fillRect(x, y + 5, barWidth, 10);
         
+        // Draw fill
         context.fillStyle = color;
-        context.fillRect(x + 100, y - 10, maxWidth * progressPercentage, 5);
+        context.fillRect(x, y + 5, barWidth * progress, 10);
+        
+        // Draw count
+        context.fillStyle = '#ffffff';
+        context.textAlign = 'right';
+        context.fillText(`${current}/${maxValue}`, x + barWidth + 30, y + 14);
     }
 
     // Draw a rounded rectangle

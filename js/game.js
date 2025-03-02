@@ -52,7 +52,7 @@ class Game {
         this.powerupEffects = {
             shield: { active: false, duration: 0 },
             damage: { active: false, duration: 0, multiplier: 1 },
-            speed: { active: false, duration: 0, multiplier: 1 },
+            dragonRage: { active: false, duration: 0, multiplier: 1 },
             coinMagnet: { active: false, duration: 0, radius: 0 }
         };
         
@@ -301,125 +301,135 @@ class Game {
                             );
                             break;
                             
-                        case 'shield':
-                            this.powerupEffects.shield.active = true;
-                            this.powerupEffects.shield.duration = 300; // 5 seconds at 60fps
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Shield!',
-                                '#3498db'
-                            );
-                            break;
-                            
-                        case 'damage':
-                            this.powerupEffects.damage.active = true;
-                            this.powerupEffects.damage.duration = 600; // 10 seconds at 60fps
-                            this.powerupEffects.damage.multiplier = 2;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Power Up!',
-                                '#e74c3c'
-                            );
-                            break;
-                            
-                        case 'dragon_rage':
-                            this.powerupEffects.speed.active = true;
-                            this.powerupEffects.speed.duration = 300; // 5 seconds at 60fps
-                            this.powerupEffects.speed.multiplier = 2;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Dragon Rage!',
-                                '#9b59b6'
-                            );
-                            break;
-                            
-                        case 'magnet':
-                            this.powerupEffects.coinMagnet.active = true;
-                            this.powerupEffects.coinMagnet.duration = 900; // 15 seconds at 60fps
-                            this.powerupEffects.coinMagnet.radius = 150;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Coin Magnet!',
-                                '#f39c12'
-                            );
-                            break;
-                            
-                        case 'weapon_fragment':
-                            this.permanentUpgrades.weaponFragments++;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Weapon Fragment!',
-                                '#e67e22'
-                            );
-                            
-                            // Check if we have enough fragments to upgrade
-                            if (this.permanentUpgrades.weaponFragments >= 10) { // 10 fragments required
-                                this.permanentUpgrades.weaponFragments = 0;
-                                this.guardian.damage += 1; // Damage increase
-                                this.particleSystem.createText(
-                                    this.guardian.x + this.guardian.width / 2,
-                                    this.guardian.y - 20,
-                                    'Weapon Upgraded!',
-                                    '#e67e22'
-                                );
-                            }
-                            break;
-                            
-                        case 'dragon_soul':
-                            this.permanentUpgrades.dragonSouls++;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Dragon Soul!',
-                                '#9b59b6'
-                            );
-                            
-                            // Check if we have enough souls to upgrade
-                            if (this.permanentUpgrades.dragonSouls >= 5) { // 5 souls required
-                                this.permanentUpgrades.dragonSouls = 0;
-                                
-                                // Upgrade existing dragons
-                                for (const sidekick of this.activeSidekicks) {
-                                    sidekick.levelUp();
-                                }
-                                
-                                this.particleSystem.createText(
-                                    this.guardian.x + this.guardian.width / 2,
-                                    this.guardian.y - 20,
-                                    'Dragons Upgraded!',
-                                    '#9b59b6'
-                                );
-                            }
-                            break;
-                            
-                        case 'life_crystal':
-                            this.permanentUpgrades.lifeCrystals++;
-                            this.particleSystem.createText(
-                                item.x,
-                                item.y,
-                                'Life Crystal!',
-                                '#2ecc71'
-                            );
-                            
-                            // Check if we have enough crystals to upgrade
-                            if (this.permanentUpgrades.lifeCrystals >= 3) { // 3 crystals required
-                                this.permanentUpgrades.lifeCrystals = 0;
-                                
-                                // Increase max lives (up to the maximum)
-                                if (this.lives < 5) { // Max 5 lives
-                                    this.lives++;
+                        case 'temp_powerup':
+                            // Handle temporary powerups
+                            switch(item.value) {
+                                case 'shield':
+                                    this.powerupEffects.shield.active = true;
+                                    this.powerupEffects.shield.duration = 300; // 5 seconds at 60fps
                                     this.particleSystem.createText(
-                                        this.guardian.x + this.guardian.width / 2,
-                                        this.guardian.y - 20,
-                                        'Life Increased!',
+                                        item.x,
+                                        item.y,
+                                        '无敌护盾! 5秒',
+                                        '#3498db'
+                                    );
+                                    break;
+                                    
+                                case 'damage':
+                                    this.powerupEffects.damage.active = true;
+                                    this.powerupEffects.damage.duration = 600; // 10 seconds at 60fps
+                                    this.powerupEffects.damage.multiplier = 2;
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        '子弹强化! 10秒',
+                                        '#e74c3c'
+                                    );
+                                    break;
+                                    
+                                case 'dragon_rage':
+                                    this.powerupEffects.dragonRage.active = true;
+                                    this.powerupEffects.dragonRage.duration = 300; // 5 seconds at 60fps
+                                    this.powerupEffects.dragonRage.multiplier = 1.5; // 50% speed increase
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        '龙怒! 5秒',
+                                        '#9b59b6'
+                                    );
+                                    break;
+                                    
+                                case 'magnet':
+                                    this.powerupEffects.coinMagnet.active = true;
+                                    this.powerupEffects.coinMagnet.duration = 900; // 15 seconds at 60fps
+                                    this.powerupEffects.coinMagnet.radius = 150;
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        '金币磁铁! 15秒',
+                                        '#f39c12'
+                                    );
+                                    break;
+                            }
+                            break;
+                            
+                        case 'perm_upgrade':
+                            // Handle permanent upgrades
+                            switch(item.value) {
+                                case 'weapon_fragment':
+                                    this.permanentUpgrades.weaponFragments++;
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        `武器碎片! ${this.permanentUpgrades.weaponFragments}/10`,
+                                        '#e67e22'
+                                    );
+                                    
+                                    // Check if we have enough fragments to upgrade
+                                    if (this.permanentUpgrades.weaponFragments >= 10) { // 10 fragments required
+                                        this.permanentUpgrades.weaponFragments = 0;
+                                        this.guardian.upgradeDamage(); // Use the guardian's method to upgrade damage
+                                        this.particleSystem.createText(
+                                            this.guardian.x + this.guardian.width / 2,
+                                            this.guardian.y - 20,
+                                            '武器升级!',
+                                            '#e67e22'
+                                        );
+                                    }
+                                    break;
+                                    
+                                case 'dragon_soul':
+                                    this.permanentUpgrades.dragonSouls++;
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        `龙魂! ${this.permanentUpgrades.dragonSouls}/5`,
+                                        '#9b59b6'
+                                    );
+                                    
+                                    // Check if we have enough souls to upgrade
+                                    if (this.permanentUpgrades.dragonSouls >= 5) { // 5 souls required
+                                        this.permanentUpgrades.dragonSouls = 0;
+                                        
+                                        // Upgrade existing dragons
+                                        for (const sidekick of this.activeSidekicks) {
+                                            sidekick.levelUp();
+                                        }
+                                        
+                                        this.particleSystem.createText(
+                                            this.guardian.x + this.guardian.width / 2,
+                                            this.guardian.y - 20,
+                                            '龙助手升级!',
+                                            '#9b59b6'
+                                        );
+                                    }
+                                    break;
+                                    
+                                case 'life_crystal':
+                                    this.permanentUpgrades.lifeCrystals++;
+                                    this.particleSystem.createText(
+                                        item.x,
+                                        item.y,
+                                        `生命水晶! ${this.permanentUpgrades.lifeCrystals}/5`,
                                         '#2ecc71'
                                     );
-                                }
+                                    
+                                    // Check if we have enough crystals to upgrade
+                                    if (this.permanentUpgrades.lifeCrystals >= 5) { // 5 crystals required
+                                        this.permanentUpgrades.lifeCrystals = 0;
+                                        
+                                        // Increase max lives (up to the maximum)
+                                        if (this.lives < 5) { // Max 5 lives
+                                            this.lives++;
+                                            this.particleSystem.createText(
+                                                this.guardian.x + this.guardian.width / 2,
+                                                this.guardian.y - 20,
+                                                '生命值增加!',
+                                                '#2ecc71'
+                                            );
+                                        }
+                                    }
+                                    break;
                             }
                             break;
                     }
@@ -679,21 +689,21 @@ class Game {
             }
         }
         
-        // Update speed boost effect
-        if (this.powerupEffects.speed.active) {
-            this.powerupEffects.speed.duration--;
-            if (this.powerupEffects.speed.duration <= 0) {
-                this.powerupEffects.speed.active = false;
-                this.powerupEffects.speed.multiplier = 1;
+        // Update dragon rage effect
+        if (this.powerupEffects.dragonRage.active) {
+            this.powerupEffects.dragonRage.duration--;
+            if (this.powerupEffects.dragonRage.duration <= 0) {
+                this.powerupEffects.dragonRage.active = false;
+                this.powerupEffects.dragonRage.multiplier = 1;
                 
                 // Reset sidekick shoot intervals
                 for (const sidekick of this.activeSidekicks) {
-                    sidekick.shootInterval = 30; // Reset to default shoot interval
+                    sidekick.shootInterval = 30; // Reset to default
                 }
             } else {
-                // Apply speed boost to sidekicks
+                // Apply dragon rage to sidekicks
                 for (const sidekick of this.activeSidekicks) {
-                    sidekick.shootInterval = 30 / this.powerupEffects.speed.multiplier;
+                    sidekick.shootInterval = 30 / this.powerupEffects.dragonRage.multiplier;
                 }
             }
         }

@@ -171,6 +171,7 @@ class Particle {
 class ParticleSystem {
     constructor() {
         this.particles = [];
+        this.textElements = [];
     }
 
     // Add a particle to the system
@@ -274,18 +275,68 @@ class ParticleSystem {
             );
         }
     }
+    
+    // Create a floating text element
+    createText(x, y, text, color = '#ffffff', size = 16, lifetime = 60) {
+        this.textElements.push({
+            x,
+            y,
+            text,
+            color,
+            size,
+            lifetime,
+            initialLifetime: lifetime,
+            vy: -1.5, // Move upward
+            alpha: 1
+        });
+    }
 
     // Update all particles
     update() {
-        // Filter out dead particles
-        this.particles = this.particles.filter(particle => particle.update());
+        // Update particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            if (!this.particles[i].update()) {
+                this.particles.splice(i, 1);
+            }
+        }
+        
+        // Update text elements
+        for (let i = this.textElements.length - 1; i >= 0; i--) {
+            const text = this.textElements[i];
+            
+            // Move text upward
+            text.y += text.vy;
+            
+            // Update alpha based on lifetime
+            text.alpha = Math.min(1, text.lifetime / (text.initialLifetime * 0.3));
+            
+            // Decrease lifetime
+            text.lifetime--;
+            
+            // Remove if expired
+            if (text.lifetime <= 0) {
+                this.textElements.splice(i, 1);
+            }
+        }
     }
 
     // Draw all particles
     draw(ctx) {
-        this.particles.forEach(particle => {
+        // Draw particles
+        for (const particle of this.particles) {
             particle.draw(ctx);
-        });
+        }
+        
+        // Draw text elements
+        for (const text of this.textElements) {
+            ctx.save();
+            ctx.globalAlpha = text.alpha;
+            ctx.fillStyle = text.color;
+            ctx.font = `bold ${text.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(text.text, text.x, text.y);
+            ctx.restore();
+        }
     }
     
     // Get current particle count
