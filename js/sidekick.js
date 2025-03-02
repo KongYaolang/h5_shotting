@@ -5,6 +5,8 @@ class Sidekick {
     constructor(type, level = 1) {
         this.type = type;
         this.level = level;
+        this.experience = 0;
+        this.experienceToNextLevel = 100; // Base XP needed for level 2
         this.width = 40;  // Sidekick width
         this.height = 40; // Sidekick height
         this.offsetX = 0;
@@ -14,6 +16,7 @@ class Sidekick {
         this.damage = level;
         this.animationFrame = 0;
         this.animationTimer = 0;
+        this.levelUpAnimationTimer = 0;
         
         // Set dragon properties based on type
         switch(type) {
@@ -49,105 +52,177 @@ class Sidekick {
                 this.attackType = 'explosive';
                 this.color = '#f1c40f';
                 this.price = 500;
-                this.description = '发射爆炸子弹，对周围敌人造成伤害';
+                this.description = '发射爆炸子弹，造成范围伤害';
                 break;
         }
     }
 
     // Update sidekick position and state
     update(guardian, position) {
-        // Update position relative to guardian
-        if (position === 'left') {
-            this.x = guardian.x - this.width - 10;
-            this.y = guardian.y + 20;
-        } else {
-            this.x = guardian.x + guardian.width + 10;
-            this.y = guardian.y + 20;
+        // Update animation
+        this.animationTimer++;
+        if (this.animationTimer >= 10) {
+            this.animationFrame = (this.animationFrame + 1) % 4;
+            this.animationTimer = 0;
+        }
+        
+        // Update level up animation
+        if (this.levelUpAnimationTimer > 0) {
+            this.levelUpAnimationTimer--;
         }
         
         // Update shoot timer
         this.shootTimer++;
         
-        // Update animation
-        this.animationTimer++;
-        if (this.animationTimer >= 10) { // Animation speed
-            this.animationFrame = (this.animationFrame + 1) % 4;
-            this.animationTimer = 0;
+        // Update position relative to guardian
+        if (position === 'left') {
+            this.offsetX = -30;
+            this.offsetY = 10;
+        } else {
+            this.offsetX = guardian.width + 10;
+            this.offsetY = 10;
         }
+        
+        // Set position
+        this.x = guardian.x + this.offsetX;
+        this.y = guardian.y + this.offsetY;
     }
 
     // Draw the sidekick
     draw(context) {
+        // Save context state
+        context.save();
+        
+        // Apply level up animation effect
+        if (this.levelUpAnimationTimer > 0) {
+            const glowIntensity = Math.sin(this.levelUpAnimationTimer * 0.2) * 10;
+            context.shadowColor = this.color;
+            context.shadowBlur = 10 + glowIntensity;
+            
+            // Pulsing size effect
+            const scale = 1 + Math.sin(this.levelUpAnimationTimer * 0.2) * 0.1;
+            context.translate(this.x + this.width / 2, this.y + this.height / 2);
+            context.scale(scale, scale);
+            context.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
+        }
+        
+        // Apply slight movement based on animation frame
+        const offsetX = Math.sin(this.animationFrame * Math.PI / 2) * 2;
+        
         // Draw dragon body
         context.fillStyle = this.color;
-        
-        // Draw body
-        context.beginPath();
-        context.ellipse(
-            this.x + this.width / 2,
-            this.y + this.height / 2,
-            this.width / 2,
-            this.height / 2,
-            0,
-            0,
-            Math.PI * 2
+        this.drawRoundedRect(
+            context, 
+            this.x + offsetX, 
+            this.y, 
+            this.width, 
+            this.height, 
+            8
         );
-        context.fill();
         
-        // Draw wings (animated)
-        context.fillStyle = this.getWingColor();
-        
-        // Left wing
-        context.save();
-        context.translate(this.x, this.y + this.height / 2);
-        context.rotate(Math.sin(this.animationFrame * 0.5) * 0.3);
-        context.beginPath();
-        context.ellipse(0, 0, 15, 20, Math.PI / 3, 0, Math.PI * 2);
-        context.fill();
-        context.restore();
-        
-        // Right wing
-        context.save();
-        context.translate(this.x + this.width, this.y + this.height / 2);
-        context.rotate(-Math.sin(this.animationFrame * 0.5) * 0.3);
-        context.beginPath();
-        context.ellipse(0, 0, 15, 20, -Math.PI / 3, 0, Math.PI * 2);
-        context.fill();
-        context.restore();
+        // Draw dragon features
+        context.fillStyle = '#2c3e50';
         
         // Draw eyes
-        context.fillStyle = '#ffffff';
         context.beginPath();
-        context.arc(this.x + this.width / 2 - 5, this.y + this.height / 3, 3, 0, Math.PI * 2);
-        context.arc(this.x + this.width / 2 + 5, this.y + this.height / 3, 3, 0, Math.PI * 2);
+        const eyeSpacing = this.width / 3;
+        const eyeY = this.y + this.height * 0.3;
+        const eyeSize = this.width / 10;
+        
+        context.arc(this.x + offsetX + eyeSpacing, eyeY, eyeSize, 0, Math.PI * 2);
+        context.arc(this.x + offsetX + this.width - eyeSpacing, eyeY, eyeSize, 0, Math.PI * 2);
         context.fill();
         
-        // Draw pupils
-        context.fillStyle = '#000000';
+        // Draw wings
+        context.fillStyle = this.getLighterColor(this.color);
+        
+        // Left wing
         context.beginPath();
-        context.arc(this.x + this.width / 2 - 5, this.y + this.height / 3, 1.5, 0, Math.PI * 2);
-        context.arc(this.x + this.width / 2 + 5, this.y + this.height / 3, 1.5, 0, Math.PI * 2);
+        context.moveTo(this.x + offsetX, this.y + this.height * 0.3);
+        context.lineTo(this.x + offsetX - 15, this.y + this.height * 0.1);
+        context.lineTo(this.x + offsetX - 5, this.y + this.height * 0.5);
+        context.closePath();
+        context.fill();
+        
+        // Right wing
+        context.beginPath();
+        context.moveTo(this.x + offsetX + this.width, this.y + this.height * 0.3);
+        context.lineTo(this.x + offsetX + this.width + 15, this.y + this.height * 0.1);
+        context.lineTo(this.x + offsetX + this.width + 5, this.y + this.height * 0.5);
+        context.closePath();
         context.fill();
         
         // Draw level indicator
-        context.fillStyle = '#ffffff';
-        context.font = '10px Arial';
-        context.textAlign = 'center';
-        context.fillText(
-            `Lv${this.level}`,
-            this.x + this.width / 2,
-            this.y - 5
-        );
+        this.drawLevelIndicator(context, this.x + offsetX, this.y);
+        
+        // Restore context state
+        context.restore();
     }
 
-    // Get wing color (slightly lighter than body)
-    getWingColor() {
-        // Create a lighter version of the dragon's color
-        const r = parseInt(this.color.slice(1, 3), 16);
-        const g = parseInt(this.color.slice(3, 5), 16);
-        const b = parseInt(this.color.slice(5, 7), 16);
+    // Draw level indicator
+    drawLevelIndicator(context, x, y) {
+        // Draw level text
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 12px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(
+            `Lv${this.level}`, 
+            x + this.width / 2, 
+            y - 10
+        );
         
-        return `rgba(${r}, ${g}, ${b}, 0.7)`;
+        // Draw experience bar if not max level
+        if (this.level < 10) {
+            const barWidth = this.width;
+            const barHeight = 3;
+            const expPercentage = this.experience / this.experienceToNextLevel;
+            
+            // Background
+            context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            context.fillRect(x, y - 5, barWidth, barHeight);
+            
+            // Fill
+            context.fillStyle = this.color;
+            context.fillRect(x, y - 5, barWidth * expPercentage, barHeight);
+        } else {
+            // Max level indicator
+            context.fillStyle = '#f1c40f'; // Gold color
+            context.font = 'bold 10px Arial';
+            context.fillText('MAX', x + this.width / 2, y - 5);
+        }
+    }
+
+    // Helper method to draw rounded rectangles
+    drawRoundedRect(context, x, y, width, height, radius) {
+        context.beginPath();
+        context.moveTo(x + radius, y);
+        context.lineTo(x + width - radius, y);
+        context.quadraticCurveTo(x + width, y, x + width, y + radius);
+        context.lineTo(x + width, y + height - radius);
+        context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        context.lineTo(x + radius, y + height);
+        context.quadraticCurveTo(x, y + height, x, y + height - radius);
+        context.lineTo(x, y + radius);
+        context.quadraticCurveTo(x, y, x + radius, y);
+        context.closePath();
+        context.fill();
+    }
+
+    // Get a lighter version of a color for wings
+    getLighterColor(hexColor) {
+        // Convert hex to RGB
+        let r = parseInt(hexColor.substr(1, 2), 16);
+        let g = parseInt(hexColor.substr(3, 2), 16);
+        let b = parseInt(hexColor.substr(5, 2), 16);
+        
+        // Lighten
+        r = Math.min(255, r + 40);
+        g = Math.min(255, g + 40);
+        b = Math.min(255, b + 40);
+        
+        // Convert back to hex
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
     // Check if sidekick should shoot
@@ -162,8 +237,11 @@ class Sidekick {
     // Shoot bullets based on dragon type
     shoot(monsters) {
         const bullets = [];
-        const bulletX = this.x + this.width / 2;
-        const bulletY = this.y;
+        const bulletX = this.x + this.width / 2 - 5;
+        const bulletY = this.y + this.height / 2;
+        
+        // Apply damage boost based on level
+        const baseDamage = this.damage;
         
         switch (this.attackType) {
             case 'straight':
@@ -173,7 +251,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'straight',
-                        this.damage
+                        baseDamage
                     )
                 );
                 break;
@@ -187,7 +265,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'spread',
-                        this.damage,
+                        baseDamage,
                         { angle: -spreadAngle }
                     )
                 );
@@ -197,7 +275,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'spread',
-                        this.damage,
+                        baseDamage,
                         { angle: 0 }
                     )
                 );
@@ -207,7 +285,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'spread',
-                        this.damage,
+                        baseDamage,
                         { angle: spreadAngle }
                     )
                 );
@@ -220,25 +298,44 @@ class Sidekick {
                 let closestDistance = Infinity;
                 
                 for (const monster of monsters) {
-                    const dx = monster.x + monster.width / 2 - bulletX;
-                    const dy = monster.y + monster.height / 2 - bulletY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestMonster = monster;
+                    if (monster.active) {
+                        const dx = monster.x + monster.width / 2 - bulletX;
+                        const dy = monster.y + monster.height / 2 - bulletY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            closestMonster = monster;
+                        }
                     }
                 }
                 
-                bullets.push(
-                    BulletFactory.createDragonBullet(
-                        bulletX,
-                        bulletY,
-                        'homing',
-                        this.damage,
-                        { target: closestMonster }
-                    )
-                );
+                if (closestMonster) {
+                    // Calculate angle to monster
+                    const dx = closestMonster.x + closestMonster.width / 2 - bulletX;
+                    const dy = closestMonster.y + closestMonster.height / 2 - bulletY;
+                    const angle = Math.atan2(dx, dy);
+                    
+                    bullets.push(
+                        BulletFactory.createDragonBullet(
+                            bulletX,
+                            bulletY,
+                            'homing',
+                            baseDamage,
+                            { target: closestMonster }
+                        )
+                    );
+                } else {
+                    // No monsters to target, shoot straight
+                    bullets.push(
+                        BulletFactory.createDragonBullet(
+                            bulletX,
+                            bulletY,
+                            'straight',
+                            baseDamage
+                        )
+                    );
+                }
                 break;
                 
             case 'piercing':
@@ -248,7 +345,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'piercing',
-                        this.damage,
+                        baseDamage,
                         { pierceCount: 3 }
                     )
                 );
@@ -261,7 +358,7 @@ class Sidekick {
                         bulletX,
                         bulletY,
                         'explosive',
-                        this.damage,
+                        baseDamage,
                         { explosionRadius: 60 }
                     )
                 );
@@ -271,19 +368,47 @@ class Sidekick {
         return bullets;
     }
 
+    // Add experience points
+    addExperience(amount) {
+        // Max level check
+        if (this.level >= 10) return false;
+        
+        this.experience += amount;
+        
+        // Check for level up
+        if (this.experience >= this.experienceToNextLevel) {
+            this.levelUp();
+            return true;
+        }
+        
+        return false;
+    }
+
     // Level up the sidekick
     levelUp() {
+        // Max level check
+        if (this.level >= 10) return;
+        
         this.level++;
+        this.experience = 0;
+        
+        // Calculate new experience requirement (increases with each level)
+        this.experienceToNextLevel = 100 * Math.pow(1.5, this.level - 1);
+        
+        // Increase damage with level
         this.damage = this.level;
         
         // Increase attack speed (decrease interval) with level, but not below minimum
         const minShootInterval = 15; // Minimum shoot interval
         this.shootInterval = Math.max(30 - (this.level - 1) * 2, minShootInterval);
+        
+        // Set level up animation timer
+        this.levelUpAnimationTimer = 60; // 1 second at 60fps
     }
 
     // Get upgrade cost
     getUpgradeCost() {
-        return this.level * 50;
+        return this.price * (this.level + 1);
     }
 }
 

@@ -155,6 +155,9 @@ class Game {
                                 20
                             );
                             
+                            // Award experience to sidekicks based on monster type
+                            this.awardSidekickExperience(monster);
+                            
                             // Track monsters defeated
                             this.monstersDefeated++;
                             
@@ -424,25 +427,28 @@ class Game {
                                     this.particleSystem.createText(
                                         item.x,
                                         item.y,
-                                        `龙魂! ${this.permanentUpgrades.dragonSouls}/5`,
+                                        `龙魂! ${this.permanentUpgrades.dragonSouls}/3`,
                                         '#9b59b6'
                                     );
                                     
                                     // Check if we have enough souls to upgrade
-                                    if (this.permanentUpgrades.dragonSouls >= 5) { // 5 souls required
+                                    if (this.permanentUpgrades.dragonSouls >= 3) { // Reduced from 5 to 3
                                         this.permanentUpgrades.dragonSouls = 0;
                                         
                                         // Upgrade existing dragons
                                         for (const sidekick of this.activeSidekicks) {
                                             sidekick.levelUp();
+                                            
+                                            // Display level up message
+                                            this.particleSystem.createText(
+                                                sidekick.x + sidekick.width / 2,
+                                                sidekick.y - 20,
+                                                `龙升级! Lv${sidekick.level}`,
+                                                sidekick.color,
+                                                16,
+                                                60
+                                            );
                                         }
-                                        
-                                        this.particleSystem.createText(
-                                            this.guardian.x + this.guardian.width / 2,
-                                            this.guardian.y - 20,
-                                            '龙助手升级!',
-                                            '#9b59b6'
-                                        );
                                     }
                                     break;
                                     
@@ -746,6 +752,9 @@ class Game {
                             15
                         );
                         
+                        // Award experience to sidekicks based on monster type
+                        this.awardSidekickExperience(monster);
+                        
                         // Track monsters defeated
                         this.monstersDefeated++;
                     }
@@ -910,5 +919,42 @@ class Game {
     // Get price to unlock a sidekick
     getSidekickUnlockPrice(type) {
         return this.sidekickManager.getUnlockPrice(type);
+    }
+
+    // Award experience to sidekicks based on monster type
+    awardSidekickExperience(monster) {
+        let expAmount = 0;
+        switch(monster.type) {
+            case 'boss':
+                expAmount = 50;
+                break;
+            case 'elite':
+                expAmount = 15;
+                break;
+            case 'minion':
+                expAmount = 3;
+                break;
+            default: // normal
+                expAmount = 5;
+        }
+        
+        // Scale experience with wave number
+        expAmount = Math.floor(expAmount * (1 + Math.floor(this.wave / 10) * 0.2));
+        
+        // Award experience to all active sidekicks
+        for (const sidekick of this.activeSidekicks) {
+            const leveledUp = sidekick.addExperience(expAmount);
+            if (leveledUp) {
+                // Display level up message
+                this.particleSystem.createText(
+                    sidekick.x + sidekick.width / 2,
+                    sidekick.y - 20,
+                    `龙升级! Lv${sidekick.level}`,
+                    sidekick.color,
+                    16,
+                    60
+                );
+            }
+        }
     }
 } 

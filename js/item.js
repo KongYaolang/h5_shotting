@@ -259,6 +259,9 @@ class ItemDropManager {
         
         // Track if a temporary powerup has already dropped in this wave
         this.tempPowerupDroppedThisWave = false;
+        
+        // Track consecutive waves without permanent upgrades
+        this.wavesWithoutPermUpgrade = 0;
     }
     
     // Reset wave tracking at the start of a new wave
@@ -269,35 +272,46 @@ class ItemDropManager {
     // Calculate drop chance based on monster type and wave number
     calculateDropChance(monsterType, waveNumber) {
         let coinChance, powerupChance, permUpgradeChance;
-        const waveBonus = Math.min(0.2, Math.floor(waveNumber / 10) * 0.04); // 4% increase every 10 waves, max 20%
+        const waveBonus = Math.min(0.25, Math.floor(waveNumber / 8) * 0.05); // 5% increase every 8 waves, max 25%
+        
+        // Pity system - increase permanent upgrade chance after consecutive waves without drops
+        const pityBonus = Math.min(0.3, this.wavesWithoutPermUpgrade * 0.05); // 5% increase per wave without drops, max 30%
         
         switch(monsterType) {
             case 'boss':
                 coinChance = 1.0; // 100%
-                powerupChance = 0.4 + waveBonus; // 40% + wave bonus (reduced from 50%)
-                permUpgradeChance = 0.5 + waveBonus; // 50% + wave bonus (reduced from 60%)
+                powerupChance = 0.5 + waveBonus; // 50% + wave bonus
+                permUpgradeChance = 0.6 + waveBonus + pityBonus; // 60% + wave bonus + pity bonus
                 break;
                 
             case 'elite':
-                coinChance = 0.7 + waveBonus; // 70% + wave bonus (reduced from 80%)
-                powerupChance = 0.2 + waveBonus; // 20% + wave bonus (reduced from 30%)
-                permUpgradeChance = 0.05 + waveBonus; // 5% + wave bonus (reduced from 10%)
+                coinChance = 0.8 + waveBonus; // 80% + wave bonus
+                powerupChance = 0.25 + waveBonus; // 25% + wave bonus
+                permUpgradeChance = 0.1 + waveBonus + pityBonus * 0.5; // 10% + wave bonus + half pity bonus
                 break;
                 
             case 'minion':
-                coinChance = 0.4 + waveBonus; // 40% + wave bonus (reduced from 50%)
-                powerupChance = 0.03 + waveBonus; // 3% + wave bonus (reduced from 5%)
-                permUpgradeChance = 0; // Minions don't drop permanent upgrades
-                if (coinChance > 0.5) coinChance = 0.5; // Cap at 50% (reduced from 60%)
-                if (powerupChance > 0.08) powerupChance = 0.08; // Cap at 8% (reduced from 10%)
+                coinChance = 0.4 + waveBonus; // 40% + wave bonus
+                powerupChance = 0.05 + waveBonus; // 5% + wave bonus
+                permUpgradeChance = 0.01 + pityBonus * 0.1; // 1% + small pity bonus
+                if (coinChance > 0.6) coinChance = 0.6; // Cap at 60%
+                if (powerupChance > 0.1) powerupChance = 0.1; // Cap at 10%
                 break;
                 
             default: // normal monster
-                coinChance = 0.5 + waveBonus; // 50% + wave bonus (reduced from 60%)
-                powerupChance = 0.08 + waveBonus; // 8% + wave bonus (reduced from 10%)
-                permUpgradeChance = 0; // Normal monsters don't drop permanent upgrades
-                if (coinChance > 0.6) coinChance = 0.6; // Cap at 60% (reduced from 70%)
-                if (powerupChance > 0.12) powerupChance = 0.12; // Cap at 12% (reduced from 15%)
+                coinChance = 0.5 + waveBonus; // 50% + wave bonus
+                powerupChance = 0.1 + waveBonus; // 10% + wave bonus
+                permUpgradeChance = 0.02 + pityBonus * 0.2; // 2% + small pity bonus
+                if (coinChance > 0.7) coinChance = 0.7; // Cap at 70%
+                if (powerupChance > 0.15) powerupChance = 0.15; // Cap at 15%
+        }
+        
+        // Scale up permanent upgrade chance in later waves
+        if (waveNumber > 20) {
+            permUpgradeChance += 0.05; // Additional 5% after wave 20
+        }
+        if (waveNumber > 40) {
+            permUpgradeChance += 0.1; // Additional 10% after wave 40
         }
         
         return { coinChance, powerupChance, permUpgradeChance };
@@ -358,16 +372,21 @@ class ItemDropManager {
             
             switch(monsterType) {
                 case 'boss':
-                    coinCount = randomBetween(8, 15); // Reduced from 10-20
+                    coinCount = randomBetween(10, 20); // Increased for bosses
                     break;
                 case 'elite':
-                    coinCount = randomBetween(2, 5); // Reduced from 3-6
+                    coinCount = randomBetween(3, 6); // Slightly increased
                     break;
                 case 'minion':
-                    coinCount = 1; // Always 1 coin (reduced from 1-2)
+                    coinCount = randomBetween(1, 2); // Unchanged
                     break;
                 default:
-                    coinCount = randomBetween(1, 2); // Reduced from 1-3
+                    coinCount = randomBetween(1, 3); // Slightly increased
+            }
+            
+            // Scale coin drops with wave number
+            if (waveNumber > 10) {
+                coinCount = Math.floor(coinCount * (1 + waveNumber / 50)); // Increase coins with wave number
             }
             
             // Create coin items
@@ -388,15 +407,45 @@ class ItemDropManager {
             this.tempPowerupDroppedThisWave = true;
         }
         
-        // Determine permanent upgrade drops (mainly from bosses)
-        if (monsterType === 'boss' || (monsterType === 'elite' && Math.random() < 0.1)) { // Reduced elite chance from 0.2 to 0.1
+        // Determine permanent upgrade drops
+        let permUpgradeDropped = false;
+        
+        // Boss always has a chance to drop permanent upgrades
+        if (monsterType === 'boss') {
             if (Math.random() < permUpgradeChance) {
                 const upgradeType = this.selectRandomPermUpgrade();
                 const offsetX = Math.random() * width;
                 const offsetY = Math.random() * height;
                 
                 drops.push(new Item(x + offsetX, y + offsetY, 'perm_upgrade', upgradeType));
+                permUpgradeDropped = true;
             }
+        } 
+        // Elite monsters have a moderate chance
+        else if (monsterType === 'elite' && Math.random() < permUpgradeChance) {
+            const upgradeType = this.selectRandomPermUpgrade();
+            const offsetX = Math.random() * width;
+            const offsetY = Math.random() * height;
+            
+            drops.push(new Item(x + offsetX, y + offsetY, 'perm_upgrade', upgradeType));
+            permUpgradeDropped = true;
+        }
+        // Regular and minion monsters have a small chance in later waves
+        else if ((monsterType === 'normal' || monsterType === 'minion') && Math.random() < permUpgradeChance) {
+            const upgradeType = this.selectRandomPermUpgrade();
+            const offsetX = Math.random() * width;
+            const offsetY = Math.random() * height;
+            
+            drops.push(new Item(x + offsetX, y + offsetY, 'perm_upgrade', upgradeType));
+            permUpgradeDropped = true;
+        }
+        
+        // Update pity counter
+        if (permUpgradeDropped) {
+            this.wavesWithoutPermUpgrade = 0;
+        } else if (monsterType === 'boss') {
+            // Only increment pity counter when a boss doesn't drop a permanent upgrade
+            this.wavesWithoutPermUpgrade++;
         }
         
         return drops;

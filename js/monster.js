@@ -12,16 +12,20 @@ class Monster {
         this.hitAnimationTimer = 0;
         this.wave = wave;
         
+        // Calculate wave scaling factor - more balanced progression
+        const waveScaling = Math.pow(wave, 0.8); // Slightly reduced exponential scaling
+        
         // 所有非BOSS怪物使用相同的大小
         if (type === 'boss') {
             this.width = 120;
             this.height = 120;
             this.speed = 0.8;
-            this.health = 80 + Math.floor(wave / 5) * 20; // Increased base health + increase per 5 waves
+            // More balanced boss health scaling
+            this.health = 60 + Math.floor(wave / 3) * 15; // Base health + increase per 3 waves
             this.color = '#9b59b6'; // Purple
             this.outlineColor = '#8e44ad'; // Dark purple
-            this.attackTimer = 200;
-            this.attackInterval = 800; // Attack every 2 seconds at 60fps (increased frequency)
+            this.attackTimer = 0;
+            this.attackInterval = 180; // Attack every 3 seconds at 60fps (reduced frequency)
         } else {
             // 所有普通怪物和精英怪物使用相同的大小
             this.width = 50;
@@ -31,21 +35,24 @@ class Monster {
             switch(type) {
                 case 'elite':
                     this.speed = 1.5;
-                    this.health = 10 + Math.floor(wave / 10) * 5; // Base health + increase per 10 waves
+                    // More balanced elite health scaling
+                    this.health = 8 + Math.floor(wave / 5) * 3; // Base health + increase per 5 waves
                     this.color = '#e74c3c'; // Red
                     this.outlineColor = '#c0392b'; // Dark red
                     break;
                     
                 case 'minion':
                     this.speed = 2.5;
-                    this.health = 3 + Math.floor(wave / 10); // Base health + increase per 10 waves
+                    // More balanced minion health scaling
+                    this.health = 2 + Math.floor(wave / 10); // Base health + small increase per 10 waves
                     this.color = '#2ecc71'; // Green
                     this.outlineColor = '#27ae60'; // Dark green
                     break;
                     
                 default: // normal monster
                     this.speed = 2;
-                    this.health = 5 + Math.floor(wave / 10) * 2; // Base health + increase per 10 waves
+                    // More balanced normal monster health scaling
+                    this.health = 4 + Math.floor(wave / 7) * 2; // Base health + increase per 7 waves
                     this.color = '#3498db'; // Blue
                     this.outlineColor = '#2980b9'; // Dark blue
             }
@@ -304,9 +311,9 @@ class Monster {
         
         // Increase attack frequency as health decreases
         if (healthPercentage < 0.3) {
-            attackInterval = 100; // Attack every 0.75 seconds when low health (was 60)
+            attackInterval = 150; // Attack every 2.5 seconds when low health (was 100)
         } else if (healthPercentage < 0.6) {
-            attackInterval = 180; // Attack every 1.25 seconds at medium health (was 90)
+            attackInterval = 240; // Attack every 4 seconds at medium health (was 180)
         }
         
         // Random chance for immediate attack when damaged
@@ -430,7 +437,7 @@ class MonsterFactory {
         const monsters = [];
         
         // 确定这一波是否是BOSS波
-        if (wave % 10 === 0) {
+        if (wave % 10 === 0) { // Boss every 10 waves (was 5)
             // BOSS波只有一个BOSS
             const x = canvasWidth / 2 - 60;
             const y = -120;
@@ -441,12 +448,18 @@ class MonsterFactory {
         // 计算怪物之间的间距
         const spacing = canvasWidth / (count + 1);
         
-        // 根据波次确定怪物类型的分布
-        let eliteChance = Math.min(0.1 + (wave * 0.02), 0.4);
-        let minionChance = Math.min(0.15 + (wave * 0.01), 0.3);
+        // 根据波次确定怪物类型的分布 - 更平衡的怪物分布
+        let eliteChance = Math.min(0.05 + (wave * 0.015), 0.3); // Slower elite scaling, max 30%
+        let minionChance = Math.min(0.1 + (wave * 0.01), 0.25); // Slower minion scaling, max 25%
+        
+        // 动态调整怪物数量 - 随着波数增加
+        let waveCount = count;
+        if (wave > 10) {
+            waveCount = Math.min(count + Math.floor((wave - 10) / 5), 8); // Max 8 monsters
+        }
         
         // 创建一排怪物，随机分配类型
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < waveCount; i++) {
             const x = spacing * (i + 1) - 25;
             const y = -100 - (Math.random() * 50);
             
@@ -459,8 +472,8 @@ class MonsterFactory {
                 monsterType = 'minion';
             }
             
-            // 每5波增加一个精英怪的概率
-            if (wave % 5 === 0 && i === Math.floor(count / 2)) {
+            // 每5波增加一个精英怪的概率 - 修正为非BOSS波
+            if (wave % 10 !== 0 && wave % 3 === 0 && i === Math.floor(waveCount / 2)) {
                 monsterType = 'elite';
             }
             
