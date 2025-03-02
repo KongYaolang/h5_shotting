@@ -173,11 +173,45 @@ class Guardian {
 
     // Shoot a bullet
     shoot() {
-        return BulletFactory.createNormalBullet(
-            this.x + this.width / 2 - 4,
-            this.y - 10,
-            this.damage
-        );
+        const bullets = [];
+        const centerX = this.x + this.width / 2 - 4;
+        const baseY = this.y - 10;
+        
+        // 检查是否处于伤害加成状态
+        if (window.game && window.game.powerupEffects.damage.active) {
+            // 三排子弹模式
+            bullets.push(
+                // 中间子弹
+                BulletFactory.createNormalBullet(
+                    centerX,
+                    baseY,
+                    this.damage * window.game.powerupEffects.damage.multiplier
+                ),
+                // 左侧子弹
+                BulletFactory.createNormalBullet(
+                    centerX - 15,
+                    baseY + 5,
+                    this.damage * window.game.powerupEffects.damage.multiplier
+                ),
+                // 右侧子弹
+                BulletFactory.createNormalBullet(
+                    centerX + 15,
+                    baseY + 5,
+                    this.damage * window.game.powerupEffects.damage.multiplier
+                )
+            );
+        } else {
+            // 普通单排子弹
+            bullets.push(
+                BulletFactory.createNormalBullet(
+                    centerX,
+                    baseY,
+                    this.damage
+                )
+            );
+        }
+        
+        return bullets;
     }
 
     // Check if sidekicks should shoot
@@ -228,31 +262,18 @@ class Guardian {
                     effectColor = 'rgba(241, 196, 15, 0.8)'; // 黄色，基础伤害
                 }
                 
-                // 限制特效数量，避免性能问题
-                const particleCount = Math.min(12, 20);
-                
                 console.log('[守护者升级] 创建特效:', {
                     中心位置: { x: centerX, y: centerY },
-                    特效颜色: effectColor,
-                    粒子数量: particleCount
+                    特效颜色: effectColor
                 });
                 
                 // 创建爆发特效
-                for (let i = 0; i < particleCount; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 1 + Math.random() * 3;
-                    const size = 2 + Math.random() * 4;
-                    
-                    particleSystem.addParticle(
-                        centerX,
-                        centerY,
-                        Math.cos(angle) * speed,
-                        Math.sin(angle) * speed,
-                        effectColor,
-                        size,
-                        30 + Math.random() * 20
-                    );
-                }
+                particleSystem.createExplosion(
+                    centerX,
+                    centerY,
+                    effectColor,
+                    20  // 粒子数量
+                );
                 
                 // 创建文字提示
                 particleSystem.createText(

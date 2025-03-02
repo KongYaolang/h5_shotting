@@ -152,14 +152,11 @@ class Bullet {
             // 这里我们假设游戏中有一个全局的粒子系统
             // 在实际实现中，你需要确保这个粒子系统存在
             if (window.game && window.game.particleSystem) {
-                window.game.particleSystem.addParticle(
+                window.game.particleSystem.createTrail(
                     this.x + this.width / 2,
                     this.y + this.height,
-                    (Math.random() - 0.5) * 2,
-                    Math.random() * 2,
                     this.trailColor,
-                    3,
-                    10
+                    5  // 粒子数量
                 );
             }
         }

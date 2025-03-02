@@ -199,8 +199,8 @@ class Game {
             
             // Check if guardian should shoot
             if (this.guardian.checkShoot()) {
-                const bullet = this.guardian.shoot();
-                this.bullets.push(bullet);
+                const newBullets = this.guardian.shoot();
+                this.bullets.push(...newBullets);
             }
             
             // Update sidekicks
