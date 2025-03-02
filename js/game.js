@@ -96,6 +96,7 @@ class Game {
         if (this.state === 'playing') {
             // Check if we should start a new wave
             if (this.monsters.length === 0 && this.monstersDefeated >= this.monstersInWave) {
+                console.log(`Wave ${this.wave} completed. Monsters defeated: ${this.monstersDefeated}/${this.monstersInWave}`);
                 this.startNewWave();
             }
             
@@ -178,14 +179,22 @@ class Game {
             // Update monsters
             for (let i = this.monsters.length - 1; i >= 0; i--) {
                 const monster = this.monsters[i];
-                monster.update();
+                // Pass guardian position to boss monsters
+                if (monster.type === 'boss') {
+                    monster.update(this.guardian.x + this.guardian.width / 2);
+                } else {
+                    monster.update();
+                }
                 
                 // Check if monster is at bottom of screen
                 if (monster.isAtBottom(this.height)) {
-                    // Track monsters defeated
-                    this.monstersDefeated++;
-                    // Remove monster
-                    this.monsters.splice(i, 1);
+                    // Only remove non-boss monsters when they reach the bottom
+                    if (monster.type !== 'boss') {
+                        // Track monsters defeated
+                        this.monstersDefeated++;
+                        // Remove monster
+                        this.monsters.splice(i, 1);
+                    }
                     continue;
                 }
                 
@@ -214,7 +223,11 @@ class Game {
                 
                 // Check if boss should attack
                 if (monster.shouldAttack()) {
-                    const bossBullets = monster.createAttack();
+                    // Pass guardian position for targeted attacks
+                    const bossBullets = monster.createAttack(
+                        this.guardian.x + this.guardian.width / 2,
+                        this.guardian.y + this.guardian.height / 2
+                    );
                     this.bossBullets.push(...bossBullets);
                 }
             }
@@ -226,6 +239,26 @@ class Game {
                 // Update position
                 bullet.x += Math.sin(bullet.angle) * bullet.speed;
                 bullet.y += Math.cos(bullet.angle) * bullet.speed;
+                
+                // Add trail effect to boss bullets based on pattern
+                const trailChance = bullet.pattern === 'targeted' ? 0.6 : 0.3;
+                const trailColor = bullet.pattern === 'targeted' ? 'rgba(231, 76, 60, 0.7)' : 'rgba(231, 76, 60, 0.5)';
+                const particleCount = bullet.pattern === 'targeted' ? 3 : 2;
+                
+                if (Math.random() < trailChance) {
+                    this.particleSystem.createTrail(
+                        bullet.x + bullet.width / 2,
+                        bullet.y + bullet.height / 2,
+                        bullet.angle,
+                        {
+                            color: trailColor,
+                            particleCount: particleCount,
+                            minSize: 1,
+                            maxSize: 3,
+                            lifetime: bullet.pattern === 'targeted' ? 15 : 10
+                        }
+                    );
+                }
                 
                 // Check if bullet is off screen
                 if (bullet.y > this.height || bullet.y < 0 || bullet.x > this.width || bullet.x < 0) {
@@ -249,6 +282,14 @@ class Game {
                             15
                         );
                     } else {
+                        // Create explosion effect before game over
+                        this.particleSystem.createExplosion(
+                            bullet.x + bullet.width / 2,
+                            bullet.y + bullet.height / 2,
+                            '#e74c3c', // Red explosion
+                            25
+                        );
+                        
                         // Game over on hit
                         this.gameOver();
                         return;
@@ -306,11 +347,11 @@ class Game {
                             switch(item.value) {
                                 case 'shield':
                                     this.powerupEffects.shield.active = true;
-                                    this.powerupEffects.shield.duration = 300; // 5 seconds at 60fps
+                                    this.powerupEffects.shield.duration = 600; // 10 seconds at 60fps
                                     this.particleSystem.createText(
                                         item.x,
                                         item.y,
-                                        '无敌护盾! 5秒',
+                                        '无敌护盾! 10秒',
                                         '#3498db'
                                     );
                                     break;
@@ -329,12 +370,12 @@ class Game {
                                     
                                 case 'dragon_rage':
                                     this.powerupEffects.dragonRage.active = true;
-                                    this.powerupEffects.dragonRage.duration = 300; // 5 seconds at 60fps
+                                    this.powerupEffects.dragonRage.duration = 1200; // 5 seconds at 60fps
                                     this.powerupEffects.dragonRage.multiplier = 1.5; // 50% speed increase
                                     this.particleSystem.createText(
                                         item.x,
                                         item.y,
-                                        '龙怒! 5秒',
+                                        '龙怒! 20秒',
                                         '#9b59b6'
                                     );
                                     break;
@@ -476,8 +517,46 @@ class Game {
             
             // Draw boss bullets
             for (const bullet of this.bossBullets) {
-                this.context.fillStyle = bullet.color;
-                this.context.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                // Draw glow effect based on bullet pattern
+                this.context.save();
+                
+                // Different visual effects based on bullet pattern
+                if (bullet.pattern === 'targeted') {
+                    // Targeted bullets have stronger glow and pulsing effect
+                    const pulseSize = Math.sin(this.gameTime * 0.2) * 2;
+                    this.context.shadowBlur = 15 + pulseSize;
+                    this.context.shadowColor = '#ff3333';
+                    this.context.fillStyle = '#ff3333';
+                    
+                    // Draw larger bullet with trail
+                    this.context.beginPath();
+                    this.context.arc(bullet.x + bullet.width / 2, bullet.y + bullet.height / 2, 
+                                bullet.width / 2 + 2, 0, Math.PI * 2);
+                    this.context.fill();
+                } else if (bullet.pattern === 'circular') {
+                    // Circular pattern bullets have blue-purple glow
+                    this.context.shadowBlur = 12;
+                    this.context.shadowColor = '#9b59b6';
+                    this.context.fillStyle = '#9b59b6';
+                    
+                    // Draw bullet with slight rotation effect
+                    this.context.translate(bullet.x + bullet.width / 2, bullet.y + bullet.height / 2);
+                    this.context.rotate(this.gameTime * 0.01);
+                    this.context.beginPath();
+                    this.context.arc(0, 0, bullet.width / 2, 0, Math.PI * 2);
+                    this.context.fill();
+                } else {
+                    // Standard bullets
+                    this.context.shadowBlur = 10;
+                    this.context.shadowColor = bullet.color;
+                    this.context.fillStyle = bullet.color;
+                    this.context.beginPath();
+                    this.context.arc(bullet.x + bullet.width / 2, bullet.y + bullet.height / 2, 
+                                bullet.width / 2, 0, Math.PI * 2);
+                    this.context.fill();
+                }
+                
+                this.context.restore();
             }
             
             // Draw monsters
@@ -606,6 +685,9 @@ class Game {
         this.monsters.push(...newMonsters);
         this.monstersInWave = newMonsters.length;
         
+        // Reset wave tracking
+        this.itemDropManager.resetWaveTracking();
+        
         // Display wave number
         this.particleSystem.createText(
             this.width / 2,
@@ -615,6 +697,8 @@ class Game {
             30,
             60
         );
+        
+        console.log(`Starting Wave ${this.wave} with ${this.monstersInWave} monsters`);
     }
 
     // Generate drops from destroyed monsters

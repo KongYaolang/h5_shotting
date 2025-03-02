@@ -244,17 +244,17 @@ class ItemDropManager {
     constructor() {
         // Temporary powerup types with their drop rates
         this.tempPowerups = [
-            { type: 'shield', rate: 0.10 },       // Energy Shield: 10% drop rate
-            { type: 'damage', rate: 0.15 },       // Bullet Enhancement: 15% drop rate
-            { type: 'dragon_rage', rate: 0.05 },  // Dragon Rage: 5% drop rate
-            { type: 'magnet', rate: 0.20 }        // Coin Magnet: 20% drop rate
+            { type: 'shield', rate: 0.08 },       // Energy Shield: 8% drop rate (reduced from 10%)
+            { type: 'damage', rate: 0.12 },       // Bullet Enhancement: 12% drop rate (reduced from 15%)
+            { type: 'dragon_rage', rate: 0.04 },  // Dragon Rage: 4% drop rate (reduced from 5%)
+            { type: 'magnet', rate: 0.16 }        // Coin Magnet: 16% drop rate (reduced from 20%)
         ];
         
         // Permanent upgrade types with their drop rates (for bosses)
         this.permUpgrades = [
-            { type: 'weapon_fragment', rate: 0.30 }, // Weapon Fragment: 30% drop rate
-            { type: 'dragon_soul', rate: 0.20 },     // Dragon Soul: 20% drop rate
-            { type: 'life_crystal', rate: 0.10 }     // Life Crystal: 10% drop rate
+            { type: 'weapon_fragment', rate: 0.25 }, // Weapon Fragment: 25% drop rate (reduced from 30%)
+            { type: 'dragon_soul', rate: 0.15 },     // Dragon Soul: 15% drop rate (reduced from 20%)
+            { type: 'life_crystal', rate: 0.05 }     // Life Crystal: 5% drop rate (reduced from 10%)
         ];
         
         // Track if a temporary powerup has already dropped in this wave
@@ -269,35 +269,35 @@ class ItemDropManager {
     // Calculate drop chance based on monster type and wave number
     calculateDropChance(monsterType, waveNumber) {
         let coinChance, powerupChance, permUpgradeChance;
-        const waveBonus = Math.floor(waveNumber / 10) * 0.05; // 5% increase every 10 waves
+        const waveBonus = Math.min(0.2, Math.floor(waveNumber / 10) * 0.04); // 4% increase every 10 waves, max 20%
         
         switch(monsterType) {
             case 'boss':
                 coinChance = 1.0; // 100%
-                powerupChance = 0.5 + waveBonus; // 50% + wave bonus
-                permUpgradeChance = 0.6 + waveBonus; // 60% + wave bonus
+                powerupChance = 0.4 + waveBonus; // 40% + wave bonus (reduced from 50%)
+                permUpgradeChance = 0.5 + waveBonus; // 50% + wave bonus (reduced from 60%)
                 break;
                 
             case 'elite':
-                coinChance = 0.8 + waveBonus; // 80% + wave bonus
-                powerupChance = 0.3 + waveBonus; // 30% + wave bonus
-                permUpgradeChance = 0.1 + waveBonus; // 10% + wave bonus
+                coinChance = 0.7 + waveBonus; // 70% + wave bonus (reduced from 80%)
+                powerupChance = 0.2 + waveBonus; // 20% + wave bonus (reduced from 30%)
+                permUpgradeChance = 0.05 + waveBonus; // 5% + wave bonus (reduced from 10%)
                 break;
                 
             case 'minion':
-                coinChance = 0.5 + waveBonus; // 50% + wave bonus
-                powerupChance = 0.05 + waveBonus; // 5% + wave bonus
+                coinChance = 0.4 + waveBonus; // 40% + wave bonus (reduced from 50%)
+                powerupChance = 0.03 + waveBonus; // 3% + wave bonus (reduced from 5%)
                 permUpgradeChance = 0; // Minions don't drop permanent upgrades
-                if (coinChance > 0.6) coinChance = 0.6;
-                if (powerupChance > 0.1) powerupChance = 0.1;
+                if (coinChance > 0.5) coinChance = 0.5; // Cap at 50% (reduced from 60%)
+                if (powerupChance > 0.08) powerupChance = 0.08; // Cap at 8% (reduced from 10%)
                 break;
                 
             default: // normal monster
-                coinChance = 0.6 + waveBonus; // 60% + wave bonus, max 70%
-                powerupChance = 0.1 + waveBonus; // 10% + wave bonus, max 15%
+                coinChance = 0.5 + waveBonus; // 50% + wave bonus (reduced from 60%)
+                powerupChance = 0.08 + waveBonus; // 8% + wave bonus (reduced from 10%)
                 permUpgradeChance = 0; // Normal monsters don't drop permanent upgrades
-                if (coinChance > 0.7) coinChance = 0.7;
-                if (powerupChance > 0.15) powerupChance = 0.15;
+                if (coinChance > 0.6) coinChance = 0.6; // Cap at 60% (reduced from 70%)
+                if (powerupChance > 0.12) powerupChance = 0.12; // Cap at 12% (reduced from 15%)
         }
         
         return { coinChance, powerupChance, permUpgradeChance };
@@ -358,16 +358,16 @@ class ItemDropManager {
             
             switch(monsterType) {
                 case 'boss':
-                    coinCount = randomBetween(10, 20);
+                    coinCount = randomBetween(8, 15); // Reduced from 10-20
                     break;
                 case 'elite':
-                    coinCount = randomBetween(3, 6);
+                    coinCount = randomBetween(2, 5); // Reduced from 3-6
                     break;
                 case 'minion':
-                    coinCount = randomBetween(1, 2);
+                    coinCount = 1; // Always 1 coin (reduced from 1-2)
                     break;
                 default:
-                    coinCount = randomBetween(1, 3);
+                    coinCount = randomBetween(1, 2); // Reduced from 1-3
             }
             
             // Create coin items
@@ -389,7 +389,7 @@ class ItemDropManager {
         }
         
         // Determine permanent upgrade drops (mainly from bosses)
-        if (monsterType === 'boss' || (monsterType === 'elite' && Math.random() < 0.2)) {
+        if (monsterType === 'boss' || (monsterType === 'elite' && Math.random() < 0.1)) { // Reduced elite chance from 0.2 to 0.1
             if (Math.random() < permUpgradeChance) {
                 const upgradeType = this.selectRandomPermUpgrade();
                 const offsetX = Math.random() * width;

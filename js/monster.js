@@ -17,11 +17,11 @@ class Monster {
             this.width = 120;
             this.height = 120;
             this.speed = 0.8;
-            this.health = 50 + Math.floor(wave / 10) * 20; // Base health + increase per 10 waves
+            this.health = 80 + Math.floor(wave / 5) * 20; // Increased base health + increase per 5 waves
             this.color = '#9b59b6'; // Purple
             this.outlineColor = '#8e44ad'; // Dark purple
-            this.attackTimer = 0;
-            this.attackInterval = 180; // Attack every 3 seconds at 60fps
+            this.attackTimer = 200;
+            this.attackInterval = 800; // Attack every 2 seconds at 60fps (increased frequency)
         } else {
             // 所有普通怪物和精英怪物使用相同的大小
             this.width = 50;
@@ -56,11 +56,63 @@ class Monster {
     }
 
     // Update monster position and state
-    update() {
+    update(guardianX) {
         if (!this.active) return;
         
         // Move monster down
-        this.y += this.speed;
+        if (this.type === 'boss') {
+            // Boss should stay at the top of the screen
+            if (this.y < 50) {
+                // Move down until reaching the desired position
+                this.y += this.speed;
+            } else {
+                // Once in position, only move horizontally
+                // Add slight vertical movement for visual effect
+                this.y = 50 + Math.sin(this.animationTimer * 0.05) * 10;
+                
+                // More aggressive horizontal movement
+                if (guardianX) {
+                    // Target player with some randomness
+                    const targetX = guardianX - this.width / 2;
+                    const distanceToTarget = targetX - this.x;
+                    
+                    // Health-based movement speed
+                    const healthPercentage = this.health / this.maxHealth;
+                    let moveSpeed = this.speed * 0.8;
+                    
+                    // Faster movement when low health
+                    if (healthPercentage < 0.3) {
+                        moveSpeed = this.speed * 1.5;
+                    } else if (healthPercentage < 0.6) {
+                        moveSpeed = this.speed * 1.2;
+                    }
+                    
+                    // Move toward player with some randomness
+                    if (Math.abs(distanceToTarget) > 20) {
+                        // Move toward player
+                        this.x += Math.sign(distanceToTarget) * moveSpeed;
+                    } else {
+                        // Random movement when close to target
+                        this.x += (Math.random() - 0.5) * moveSpeed * 2;
+                    }
+                    
+                    // Every 2 seconds, make a sudden movement to surprise the player
+                    if (this.animationTimer % 120 === 0) {
+                        this.x += (Math.random() - 0.5) * 50;
+                    }
+                } else {
+                    // Fallback to sine wave movement if no guardian position
+                    this.x += Math.sin(this.animationTimer * 0.02) * 2;
+                }
+            }
+            
+            // Keep boss within screen bounds
+            if (this.x < 0) this.x = 0;
+            if (this.x > 400 - this.width) this.x = 400 - this.width;
+        } else {
+            // Normal monsters move down as usual
+            this.y += this.speed;
+        }
         
         // Update animation
         this.animationTimer++;
@@ -227,6 +279,11 @@ class Monster {
         return this.y + this.height >= canvasHeight;
     }
 
+    // Check if monster is a boss
+    isBoss() {
+        return this.type === 'boss';
+    }
+
     // Check if monster collides with guardian
     checkCollision(guardian) {
         return (
@@ -241,7 +298,23 @@ class Monster {
     shouldAttack() {
         if (this.type !== 'boss') return false;
         
-        if (this.attackTimer >= this.attackInterval) {
+        // Determine attack interval based on health percentage
+        const healthPercentage = this.health / this.maxHealth;
+        let attackInterval = this.attackInterval;
+        
+        // Increase attack frequency as health decreases
+        if (healthPercentage < 0.3) {
+            attackInterval = 100; // Attack every 0.75 seconds when low health (was 60)
+        } else if (healthPercentage < 0.6) {
+            attackInterval = 180; // Attack every 1.25 seconds at medium health (was 90)
+        }
+        
+        // Random chance for immediate attack when damaged
+        if (this.hitAnimationTimer > 0 && Math.random() < 0.001) {
+            this.attackTimer = attackInterval;
+        }
+        
+        if (this.attackTimer >= attackInterval) {
             this.attackTimer = 0;
             return true;
         }
@@ -250,22 +323,82 @@ class Monster {
     }
 
     // Create boss attack (bullets)
-    createAttack() {
+    createAttack(guardianX, guardianY) {
         const bullets = [];
-        const bulletCount = 5; // Number of bullets in attack
         
-        for (let i = 0; i < bulletCount; i++) {
-            const angle = i * 0.3 - (bulletCount - 1) * 0.15; // Spread bullets
-            
-            bullets.push({
-                x: this.x + this.width / 2 - 5,
-                y: this.y + this.height / 2,
-                width: 10,
-                height: 10,
-                speed: 3,
-                angle: Math.PI / 2 + angle, // Down with spread
-                color: '#e74c3c', // Red bullets
-            });
+        // Determine attack pattern based on health percentage
+        const healthPercentage = this.health / this.maxHealth;
+        let bulletCount = 4; // Default number of bullets
+        let bulletSpeed = 1;
+        let bulletSpread = 0.3;
+        
+        // Calculate angle to guardian (player)
+        const dx = guardianX - (this.x + this.width / 2);
+        const dy = guardianY - (this.y + this.height / 2);
+        const angleToGuardian = Math.atan2(dx, dy);
+        
+        // Increase difficulty as boss health decreases
+        if (healthPercentage < 0.3) {
+            bulletCount = 5; // More bullets when low health
+            bulletSpeed = 2;
+            bulletSpread = 0.3;
+        } else if (healthPercentage < 0.6) {
+            bulletCount = 4; // Medium difficulty
+            bulletSpeed = 2;
+            bulletSpread = 0.3;
+        }
+        
+        // Select attack pattern based on health and random chance
+        const attackPattern = Math.random();
+        
+        if (healthPercentage < 0.3 && attackPattern < 0.4) {
+            // Circular attack pattern (low health special attack)
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                
+                bullets.push({
+                    x: this.x + this.width / 2 - 5,
+                    y: this.y + this.height / 2,
+                    width: 10,
+                    height: 10,
+                    speed: bulletSpeed * 0.8,
+                    angle: angle,
+                    color: '#e74c3c', // Red bullets
+                    pattern: 'circular'
+                });
+            }
+        } else if (healthPercentage < 0.6 && attackPattern < 0.3) {
+            // Triple shot toward player
+            for (let i = 0; i < 3; i++) {
+                const offsetAngle = (i - 1) * 0.15;
+                
+                bullets.push({
+                    x: this.x + this.width / 2 - 5,
+                    y: this.y + this.height / 2,
+                    width: 12,
+                    height: 12,
+                    speed: bulletSpeed * 1.2,
+                    angle: angleToGuardian + offsetAngle,
+                    color: '#e74c3c', // Red bullets
+                    pattern: 'targeted'
+                });
+            }
+        } else {
+            // Standard spread attack toward player
+            for (let i = 0; i < bulletCount; i++) {
+                const angle = i * bulletSpread - (bulletCount - 1) * bulletSpread / 2; // Spread bullets
+                
+                bullets.push({
+                    x: this.x + this.width / 2 - 5,
+                    y: this.y + this.height,
+                    width: 10,
+                    height: 10,
+                    speed: bulletSpeed,
+                    angle: angleToGuardian + angle, // Toward player with spread
+                    color: '#e74c3c', // Red bullets
+                    pattern: 'spread'
+                });
+            }
         }
         
         return bullets;
@@ -299,8 +432,8 @@ class MonsterFactory {
         // 确定这一波是否是BOSS波
         if (wave % 10 === 0) {
             // BOSS波只有一个BOSS
-            const x = canvasWidth / 2 - 60; // 居中放置BOSS
-            const y = -120; // 开始于屏幕上方
+            const x = canvasWidth / 2 - 60;
+            const y = -120;
             monsters.push(new Monster(x, y, 'boss', wave));
             return monsters;
         }
@@ -309,15 +442,14 @@ class MonsterFactory {
         const spacing = canvasWidth / (count + 1);
         
         // 根据波次确定怪物类型的分布
-        let eliteChance = Math.min(0.1 + (wave * 0.02), 0.4); // 精英怪物出现概率随波次增加，最高40%
-        let minionChance = Math.min(0.15 + (wave * 0.01), 0.3); // 小怪出现概率随波次增加，最高30%
+        let eliteChance = Math.min(0.1 + (wave * 0.02), 0.4);
+        let minionChance = Math.min(0.15 + (wave * 0.01), 0.3);
         
         // 创建一排怪物，随机分配类型
         for (let i = 0; i < count; i++) {
-            const x = spacing * (i + 1) - 25; // 居中放置怪物
-            const y = -100 - (Math.random() * 50); // 开始于屏幕上方，有些随机高度差异
+            const x = spacing * (i + 1) - 25;
+            const y = -100 - (Math.random() * 50);
             
-            // 随机决定怪物类型
             let monsterType = 'normal';
             const typeRoll = Math.random();
             
@@ -329,7 +461,7 @@ class MonsterFactory {
             
             // 每5波增加一个精英怪的概率
             if (wave % 5 === 0 && i === Math.floor(count / 2)) {
-                monsterType = 'elite'; // 中间位置强制为精英怪
+                monsterType = 'elite';
             }
             
             monsters.push(new Monster(x, y, monsterType, wave));
