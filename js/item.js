@@ -244,17 +244,17 @@ class ItemDropManager {
     constructor() {
         // Temporary powerup types with their drop rates
         this.tempPowerups = [
-            { type: 'shield', rate: 0.08 },       // Energy Shield: 8% drop rate (reduced from 10%)
-            { type: 'damage', rate: 0.12 },       // Bullet Enhancement: 12% drop rate (reduced from 15%)
-            { type: 'dragon_rage', rate: 0.04 },  // Dragon Rage: 4% drop rate (reduced from 5%)
-            { type: 'magnet', rate: 0.16 }        // Coin Magnet: 16% drop rate (reduced from 20%)
+            { type: 'shield', rate: 0.3 },
+            { type: 'damage', rate: 0.3 },
+            { type: 'dragon_rage', rate: 0.2 },
+            { type: 'magnet', rate: 0.2 }
         ];
         
         // Permanent upgrade types with their drop rates (for bosses)
         this.permUpgrades = [
-            { type: 'weapon_fragment', rate: 0.25 }, // Weapon Fragment: 25% drop rate (reduced from 30%)
-            { type: 'dragon_soul', rate: 0.15 },     // Dragon Soul: 15% drop rate (reduced from 20%)
-            { type: 'life_crystal', rate: 0.05 }     // Life Crystal: 5% drop rate (reduced from 10%)
+            { type: 'weapon_fragment', rate: 0.45 }, // 提高武器碎片权重 (原为0.4)
+            { type: 'dragon_soul', rate: 0.45 },     // 提高龙魂权重 (原为0.4)
+            { type: 'life_crystal', rate: 0.1 }      // 降低生命水晶权重 (原为0.2)
         ];
         
         // Track if a temporary powerup has already dropped in this wave
@@ -262,6 +262,12 @@ class ItemDropManager {
         
         // Track consecutive waves without permanent upgrades
         this.wavesWithoutPermUpgrade = 0;
+        
+        // 当前波次的掉落追踪
+        this.currentWaveDrops = {
+            permUpgrade: false,
+            powerup: false
+        };
     }
     
     // Reset wave tracking at the start of a new wave
@@ -272,46 +278,51 @@ class ItemDropManager {
     // Calculate drop chance based on monster type and wave number
     calculateDropChance(monsterType, waveNumber) {
         let coinChance, powerupChance, permUpgradeChance;
-        const waveBonus = Math.min(0.25, Math.floor(waveNumber / 8) * 0.05); // 5% increase every 8 waves, max 25%
+        const waveBonus = Math.min(0.35, Math.floor(waveNumber / 5) * 0.07); // 7% increase every 5 waves, max 35%
         
         // Pity system - increase permanent upgrade chance after consecutive waves without drops
-        const pityBonus = Math.min(0.3, this.wavesWithoutPermUpgrade * 0.05); // 5% increase per wave without drops, max 30%
+        const pityBonus = Math.min(0.4, this.wavesWithoutPermUpgrade * 0.08); // 8% increase per wave without drops, max 40%
         
         switch(monsterType) {
             case 'boss':
                 coinChance = 1.0; // 100%
-                powerupChance = 0.5 + waveBonus; // 50% + wave bonus
-                permUpgradeChance = 0.6 + waveBonus + pityBonus; // 60% + wave bonus + pity bonus
+                powerupChance = 0.6 + waveBonus; // 60% + wave bonus
+                permUpgradeChance = 0.8 + waveBonus + pityBonus; // 80% + wave bonus + pity bonus
                 break;
                 
             case 'elite':
                 coinChance = 0.8 + waveBonus; // 80% + wave bonus
-                powerupChance = 0.25 + waveBonus; // 25% + wave bonus
-                permUpgradeChance = 0.1 + waveBonus + pityBonus * 0.5; // 10% + wave bonus + half pity bonus
+                powerupChance = 0.3 + waveBonus; // 30% + wave bonus
+                permUpgradeChance = 0.25 + waveBonus + pityBonus * 0.6; // 25% + wave bonus + 60% of pity bonus
                 break;
                 
             case 'minion':
                 coinChance = 0.4 + waveBonus; // 40% + wave bonus
-                powerupChance = 0.05 + waveBonus; // 5% + wave bonus
-                permUpgradeChance = 0.01 + pityBonus * 0.1; // 1% + small pity bonus
+                powerupChance = 0.1 + waveBonus; // 10% + wave bonus
+                permUpgradeChance = 0.05 + pityBonus * 0.2; // 5% + small pity bonus
                 if (coinChance > 0.6) coinChance = 0.6; // Cap at 60%
-                if (powerupChance > 0.1) powerupChance = 0.1; // Cap at 10%
+                if (powerupChance > 0.15) powerupChance = 0.15; // Cap at 15%
                 break;
                 
             default: // normal monster
                 coinChance = 0.5 + waveBonus; // 50% + wave bonus
-                powerupChance = 0.1 + waveBonus; // 10% + wave bonus
-                permUpgradeChance = 0.02 + pityBonus * 0.2; // 2% + small pity bonus
+                powerupChance = 0.15 + waveBonus; // 15% + wave bonus
+                permUpgradeChance = 0.08 + pityBonus * 0.3; // 8% + pity bonus
                 if (coinChance > 0.7) coinChance = 0.7; // Cap at 70%
-                if (powerupChance > 0.15) powerupChance = 0.15; // Cap at 15%
+                if (powerupChance > 0.2) powerupChance = 0.2; // Cap at 20%
         }
         
         // Scale up permanent upgrade chance in later waves
-        if (waveNumber > 20) {
-            permUpgradeChance += 0.05; // Additional 5% after wave 20
+        if (waveNumber > 15) { // Earlier wave bonus (was 20)
+            permUpgradeChance += 0.08; // 8% bonus (was 5%)
         }
-        if (waveNumber > 40) {
-            permUpgradeChance += 0.1; // Additional 10% after wave 40
+        if (waveNumber > 30) { // Earlier wave bonus (was 40)
+            permUpgradeChance += 0.15; // 15% bonus (was 10%)
+        }
+        
+        // 额外的掉落率提升机制
+        if (this.wavesWithoutPermUpgrade >= 5) { // 5波未掉落就额外提升
+            permUpgradeChance *= 1.5; // 提升50%掉落率
         }
         
         return { coinChance, powerupChance, permUpgradeChance };
@@ -333,10 +344,16 @@ class ItemDropManager {
         return this.tempPowerups[0].type;
     }
     
-    // Select a random permanent upgrade based on drop rates
+    // Select a random permanent upgrade based on drop rates and wave number
     selectRandomPermUpgrade() {
         const totalRate = this.permUpgrades.reduce((sum, item) => sum + item.rate, 0);
         let random = Math.random() * totalRate;
+        
+        // 如果连续5波没有掉落，增加武器碎片和龙魂的权重
+        if (this.wavesWithoutPermUpgrade >= 5) {
+            // 重新计算随机值，偏向武器碎片和龙魂
+            random = Math.random() * 0.9; // 90%的概率掉落武器碎片或龙魂
+        }
         
         for (const upgrade of this.permUpgrades) {
             if (random < upgrade.rate) {
@@ -345,8 +362,8 @@ class ItemDropManager {
             random -= upgrade.rate;
         }
         
-        // Default fallback
-        return this.permUpgrades[0].type;
+        // 默认返回武器碎片
+        return 'weapon_fragment';
     }
     
     // Generate drops based on monster type, position and wave number

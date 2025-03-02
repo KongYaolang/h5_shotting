@@ -436,8 +436,11 @@ class MonsterFactory {
     static createWave(canvasWidth, wave, count = 5) {
         const monsters = [];
         
+        console.log(`[MonsterFactory] Creating wave ${wave} with base count ${count}`);
+        
         // 确定这一波是否是BOSS波
         if (wave % 10 === 0) { // Boss every 10 waves (was 5)
+            console.log(`[MonsterFactory] Wave ${wave} is a boss wave`);
             // BOSS波只有一个BOSS
             const x = canvasWidth / 2 - 60;
             const y = -120;
@@ -458,6 +461,8 @@ class MonsterFactory {
             waveCount = Math.min(count + Math.floor((wave - 10) / 5), 8); // Max 8 monsters
         }
         
+        console.log(`[MonsterFactory] Wave ${wave} - Elite chance: ${eliteChance.toFixed(2)}, Minion chance: ${minionChance.toFixed(2)}, Monster count: ${waveCount}`);
+        
         // 创建一排怪物，随机分配类型
         for (let i = 0; i < waveCount; i++) {
             const x = spacing * (i + 1) - 25;
@@ -475,11 +480,13 @@ class MonsterFactory {
             // 每5波增加一个精英怪的概率 - 修正为非BOSS波
             if (wave % 10 !== 0 && wave % 3 === 0 && i === Math.floor(waveCount / 2)) {
                 monsterType = 'elite';
+                console.log(`[MonsterFactory] Adding guaranteed elite monster at wave ${wave}`);
             }
             
             monsters.push(new Monster(x, y, monsterType, wave));
         }
         
+        console.log(`[MonsterFactory] Created wave ${wave} with ${monsters.length} monsters: ${monsters.map(m => m.type).join(', ')}`);
         return monsters;
     }
 } 

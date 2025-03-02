@@ -202,54 +202,79 @@ class Guardian {
     }
 
     // Upgrade bullet damage
-    upgradeDamage() {
-        this.damage++;
+    upgradeDamage(particleSystem = null) {
+        console.log('[守护者升级] 开始升级:', {
+            当前伤害: this.damage,
+            位置: { x: this.x, y: this.y },
+            是否有特效系统: !!particleSystem
+        });
         
-        // 创建升级效果
-        if (window.game && window.game.particleSystem) {
-            // 创建升级特效
-            const centerX = this.x + this.width / 2;
-            const centerY = this.y + this.height / 2;
+        try {
+            this.damage++;
             
-            // 根据新的伤害等级设置特效颜色
-            let effectColor;
-            if (this.damage >= 5) {
-                effectColor = 'rgba(231, 76, 60, 0.8)'; // 红色，高伤害
-            } else if (this.damage >= 3) {
-                effectColor = 'rgba(243, 156, 18, 0.8)'; // 橙色，中等伤害
-            } else {
-                effectColor = 'rgba(241, 196, 15, 0.8)'; // 黄色，基础伤害
-            }
-            
-            // 创建爆发特效
-            for (let i = 0; i < 20; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 3;
-                const size = 2 + Math.random() * 4;
+            // 只在有 particleSystem 时创建特效
+            if (particleSystem) {
+                // 创建升级特效
+                const centerX = this.x + this.width / 2;
+                const centerY = this.y + this.height / 2;
                 
-                window.game.particleSystem.addParticle(
+                // 根据新的伤害等级设置特效颜色
+                let effectColor;
+                if (this.damage >= 5) {
+                    effectColor = 'rgba(231, 76, 60, 0.8)'; // 红色，高伤害
+                } else if (this.damage >= 3) {
+                    effectColor = 'rgba(243, 156, 18, 0.8)'; // 橙色，中等伤害
+                } else {
+                    effectColor = 'rgba(241, 196, 15, 0.8)'; // 黄色，基础伤害
+                }
+                
+                // 限制特效数量，避免性能问题
+                const particleCount = Math.min(12, 20);
+                
+                console.log('[守护者升级] 创建特效:', {
+                    中心位置: { x: centerX, y: centerY },
+                    特效颜色: effectColor,
+                    粒子数量: particleCount
+                });
+                
+                // 创建爆发特效
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    const size = 2 + Math.random() * 4;
+                    
+                    particleSystem.addParticle(
+                        centerX,
+                        centerY,
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed,
+                        effectColor,
+                        size,
+                        30 + Math.random() * 20
+                    );
+                }
+                
+                // 创建文字提示
+                particleSystem.createText(
                     centerX,
-                    centerY,
-                    Math.cos(angle) * speed,
-                    Math.sin(angle) * speed,
+                    centerY - 30,
+                    `攻击力提升! Lv.${this.damage}`,
                     effectColor,
-                    size,
-                    30 + Math.random() * 20
+                    16,
+                    60
                 );
             }
             
-            // 创建文字提示
-            window.game.particleSystem.createText(
-                centerX,
-                centerY - 30,
-                `攻击力提升! Lv.${this.damage}`,
-                effectColor,
-                16,
-                60
-            );
+            console.log('[守护者升级] 升级完成:', {
+                新伤害: this.damage,
+                特效是否创建: !!particleSystem
+            });
+            
+            return this.damage;
+        } catch (error) {
+            console.error('[守护者升级] 升级过程出错:', error);
+            throw error;
         }
-        
-        return this.damage;
     }
 
     // Get upgrade cost for weapon

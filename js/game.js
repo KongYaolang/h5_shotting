@@ -7,31 +7,107 @@ class Game {
         this.context = canvas.getContext('2d');
         this.width = canvas.width;
         this.height = canvas.height;
-        this.resetGame();
         
-        // Initialize particle system
+        // Initialize managers
         this.particleSystem = new ParticleSystem();
-        
-        // Initialize sidekick manager
         this.sidekickManager = new SidekickManager();
-        
-        // Initialize item drop manager
         this.itemDropManager = new ItemDropManager();
-        
-        // Initialize UI manager
         this.uiManager = new UIManager(this);
         
         // Game state
         this.state = 'menu'; // menu, playing, gameover
         
+        // Load saved data
+        this.loadSavedData();
+        
+        // Initialize game
+        this.resetGame();
+        
         // Load high score from local storage
         this.loadHighScore();
     }
 
+    // Save permanent upgrades to localStorage
+    savePermanentUpgrades() {
+        // Make sure we have valid data before saving
+        if (!this.permanentUpgrades) {
+            console.error('Attempting to save invalid permanent upgrades');
+            return;
+        }
+        
+        const saveData = {
+            permanentUpgrades: {
+                weaponFragments: this.permanentUpgrades.weaponFragments || 0,
+                dragonSouls: this.permanentUpgrades.dragonSouls || 0,
+                lifeCrystals: this.permanentUpgrades.lifeCrystals || 0
+            },
+            guardianDamage: this.guardian ? this.guardian.damage : 1,
+            sidekickLevels: this.activeSidekicks.map(sidekick => ({
+                type: sidekick.type,
+                level: sidekick.level,
+                experience: sidekick.experience
+            }))
+        };
+        
+        console.log('Saving game data:', saveData);
+        localStorage.setItem('everwingPermanentUpgrades', JSON.stringify(saveData));
+    }
+
+    // Load saved data from localStorage
+    loadSavedData() {
+        try {
+            const savedData = localStorage.getItem('everwingPermanentUpgrades');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                console.log('Loading saved data:', data);
+                
+                // Ensure we have valid permanent upgrades data
+                this.savedPermanentUpgrades = {
+                    weaponFragments: data.permanentUpgrades?.weaponFragments || 0,
+                    dragonSouls: data.permanentUpgrades?.dragonSouls || 0,
+                    lifeCrystals: data.permanentUpgrades?.lifeCrystals || 0
+                };
+                
+                // Restore guardian damage
+                this.savedGuardianDamage = data.guardianDamage || 1;
+                
+                // Restore sidekick data
+                this.savedSidekickData = data.sidekickLevels || [];
+                
+                console.log('Loaded permanent upgrades:', this.savedPermanentUpgrades);
+                console.log('Loaded guardian damage:', this.savedGuardianDamage);
+                console.log('Loaded sidekick data:', this.savedSidekickData);
+            } else {
+                // Initialize with default values if no saved data exists
+                this.savedPermanentUpgrades = {
+                    weaponFragments: 0,
+                    dragonSouls: 0,
+                    lifeCrystals: 0
+                };
+                this.savedGuardianDamage = 1;
+                this.savedSidekickData = [];
+            }
+        } catch (error) {
+            console.error('Error loading saved data:', error);
+            // Initialize with default values if there's an error
+            this.savedPermanentUpgrades = {
+                weaponFragments: 0,
+                dragonSouls: 0,
+                lifeCrystals: 0
+            };
+            this.savedGuardianDamage = 1;
+            this.savedSidekickData = [];
+        }
+    }
+
     // Reset game state
     resetGame() {
-        // Guardian (player)
+        // Load saved data first to ensure we have the latest values
+        this.loadSavedData();
+        
+        // Guardian (player) - with saved damage
         this.guardian = new Guardian(this.width / 2 - 30, this.height - 100);
+        this.guardian.damage = this.savedGuardianDamage;
         
         // Game objects
         this.bullets = [];
@@ -40,10 +116,23 @@ class Game {
         this.items = [];
         this.activeSidekicks = [];
         
+        // Restore sidekicks with their levels and experience
+        if (this.savedSidekickData && this.savedSidekickData.length > 0) {
+            for (const sidekickData of this.savedSidekickData) {
+                const sidekick = this.sidekickManager.getSidekick(sidekickData.type);
+                sidekick.level = sidekickData.level;
+                sidekick.experience = sidekickData.experience;
+                this.activeSidekicks.push(sidekick);
+            }
+        } else {
+            // Add default sidekick (blue dragon)
+            this.activeSidekicks.push(this.sidekickManager.getSidekick('blue'));
+        }
+        
         // Game state
         this.score = 0;
         this.coins = 0;
-        this.lives = 3; // Starting lives
+        this.lives = 3;
         this.wave = 0;
         this.waveTimer = 0;
         this.gameTime = 0;
@@ -56,16 +145,14 @@ class Game {
             coinMagnet: { active: false, duration: 0, radius: 0 }
         };
         
-        // Permanent upgrades
-        this.permanentUpgrades = {
-            weaponFragments: 0,
-            dragonSouls: 0,
-            lifeCrystals: 0
-        };
+        // Load permanent upgrades from saved data
+        this.permanentUpgrades = { ...this.savedPermanentUpgrades };
         
         // Wave tracking
         this.monstersInWave = 0;
         this.monstersDefeated = 0;
+        
+        console.log('Game reset with permanent upgrades:', this.permanentUpgrades);
     }
 
     // Start a new game
@@ -79,9 +166,6 @@ class Game {
         document.getElementById('gameOverScreen').classList.remove('active');
         document.getElementById('gameUI').classList.add('active');
         
-        // Add default sidekick (blue dragon)
-        this.activeSidekicks.push(this.sidekickManager.getSidekick('blue'));
-        
         // Start first wave
         this.startNewWave();
         
@@ -94,6 +178,16 @@ class Game {
         this.gameTime++;
         
         if (this.state === 'playing') {
+            // Save progress periodically (every 5 seconds)
+            if (this.gameTime % 300 === 0) {
+                this.savePermanentUpgrades();
+            }
+            
+            // Debug logs for monster tracking
+            if (this.gameTime % 60 === 0) { // Log every second
+                console.log(`Current state - Wave: ${this.wave}, Monsters alive: ${this.monsters.length}, Defeated: ${this.monstersDefeated}/${this.monstersInWave}`);
+            }
+            
             // Check if we should start a new wave
             if (this.monsters.length === 0 && this.monstersDefeated >= this.monstersInWave) {
                 console.log(`Wave ${this.wave} completed. Monsters defeated: ${this.monstersDefeated}/${this.monstersInWave}`);
@@ -399,85 +493,7 @@ class Game {
                             
                         case 'perm_upgrade':
                             // Handle permanent upgrades
-                            switch(item.value) {
-                                case 'weapon_fragment':
-                                    this.permanentUpgrades.weaponFragments++;
-                                    this.particleSystem.createText(
-                                        item.x,
-                                        item.y,
-                                        `武器碎片! ${this.permanentUpgrades.weaponFragments}/10`,
-                                        '#e67e22'
-                                    );
-                                    
-                                    // Check if we have enough fragments to upgrade
-                                    if (this.permanentUpgrades.weaponFragments >= 10) { // 10 fragments required
-                                        this.permanentUpgrades.weaponFragments = 0;
-                                        this.guardian.upgradeDamage(); // Use the guardian's method to upgrade damage
-                                        this.particleSystem.createText(
-                                            this.guardian.x + this.guardian.width / 2,
-                                            this.guardian.y - 20,
-                                            '武器升级!',
-                                            '#e67e22'
-                                        );
-                                    }
-                                    break;
-                                    
-                                case 'dragon_soul':
-                                    this.permanentUpgrades.dragonSouls++;
-                                    this.particleSystem.createText(
-                                        item.x,
-                                        item.y,
-                                        `龙魂! ${this.permanentUpgrades.dragonSouls}/3`,
-                                        '#9b59b6'
-                                    );
-                                    
-                                    // Check if we have enough souls to upgrade
-                                    if (this.permanentUpgrades.dragonSouls >= 3) { // Reduced from 5 to 3
-                                        this.permanentUpgrades.dragonSouls = 0;
-                                        
-                                        // Upgrade existing dragons
-                                        for (const sidekick of this.activeSidekicks) {
-                                            sidekick.levelUp();
-                                            
-                                            // Display level up message
-                                            this.particleSystem.createText(
-                                                sidekick.x + sidekick.width / 2,
-                                                sidekick.y - 20,
-                                                `龙升级! Lv${sidekick.level}`,
-                                                sidekick.color,
-                                                16,
-                                                60
-                                            );
-                                        }
-                                    }
-                                    break;
-                                    
-                                case 'life_crystal':
-                                    this.permanentUpgrades.lifeCrystals++;
-                                    this.particleSystem.createText(
-                                        item.x,
-                                        item.y,
-                                        `生命水晶! ${this.permanentUpgrades.lifeCrystals}/5`,
-                                        '#2ecc71'
-                                    );
-                                    
-                                    // Check if we have enough crystals to upgrade
-                                    if (this.permanentUpgrades.lifeCrystals >= 5) { // 5 crystals required
-                                        this.permanentUpgrades.lifeCrystals = 0;
-                                        
-                                        // Increase max lives (up to the maximum)
-                                        if (this.lives < 5) { // Max 5 lives
-                                            this.lives++;
-                                            this.particleSystem.createText(
-                                                this.guardian.x + this.guardian.width / 2,
-                                                this.guardian.y - 20,
-                                                '生命值增加!',
-                                                '#2ecc71'
-                                            );
-                                        }
-                                    }
-                                    break;
-                            }
+                            this.handlePermanentUpgrade(item);
                             break;
                     }
                     
@@ -686,8 +702,12 @@ class Game {
         this.waveTimer = 0;
         this.monstersDefeated = 0;
         
+        console.log(`[Wave Start] Starting Wave ${this.wave}`);
+        
         // Create new wave of monsters
         const newMonsters = MonsterFactory.createWave(this.width, this.wave);
+        console.log(`[Wave Creation] Created ${newMonsters.length} monsters for wave ${this.wave}`);
+        
         this.monsters.push(...newMonsters);
         this.monstersInWave = newMonsters.length;
         
@@ -704,7 +724,7 @@ class Game {
             60
         );
         
-        console.log(`Starting Wave ${this.wave} with ${this.monstersInWave} monsters`);
+        console.log(`[Wave Setup] Wave ${this.wave} initialized with ${this.monstersInWave} monsters`);
     }
 
     // Generate drops from destroyed monsters
@@ -811,9 +831,146 @@ class Game {
         }
     }
 
+    // Handle permanent upgrade collection
+    handlePermanentUpgrade(item) {
+        switch(item.value) {
+            case 'weapon_fragment':
+                console.log('[武器碎片] 当前状态:', {
+                    当前碎片数: this.permanentUpgrades.weaponFragments,
+                    守护者伤害: this.guardian.damage
+                });
+                
+                // 增加碎片数量
+                this.permanentUpgrades.weaponFragments++;
+                console.log('[武器碎片] 收集后:', {
+                    碎片数: this.permanentUpgrades.weaponFragments,
+                    是否达到升级条件: this.permanentUpgrades.weaponFragments >= 10
+                });
+                
+                // 显示收集提示
+                this.particleSystem.createText(
+                    item.x,
+                    item.y,
+                    `武器碎片! ${this.permanentUpgrades.weaponFragments}/10`,
+                    '#e67e22'
+                );
+                
+                // 检查是否达到升级条件
+                if (this.permanentUpgrades.weaponFragments >= 10) {
+                    console.log('[武器碎片] 开始升级武器');
+                    try {
+                        // 重置碎片数量并升级武器
+                        this.permanentUpgrades.weaponFragments = 0;
+                        console.log('[武器碎片] 升级前守护者状态:', {
+                            伤害: this.guardian.damage,
+                            位置: { x: this.guardian.x, y: this.guardian.y }
+                        });
+                        
+                        this.guardian.upgradeDamage(this.particleSystem);
+                        
+                        console.log('[武器碎片] 升级后状态:', {
+                            碎片数: this.permanentUpgrades.weaponFragments,
+                            新伤害: this.guardian.damage
+                        });
+                    } catch (error) {
+                        console.error('[武器碎片] 升级过程出错:', error);
+                    }
+                }
+                break;
+                
+            case 'dragon_soul':
+                this.permanentUpgrades.dragonSouls++;
+                this.particleSystem.createText(
+                    item.x,
+                    item.y,
+                    `龙魂! ${this.permanentUpgrades.dragonSouls}/5`,
+                    '#9b59b6'
+                );
+                
+                // 检查是否有足够的龙魂升级
+                if (this.permanentUpgrades.dragonSouls >= 5) {
+                    this.permanentUpgrades.dragonSouls = 0;
+                    
+                    // 如果有空位，解锁新龙
+                    if (this.activeSidekicks.length < 2) {
+                        // 获取所有可用但未解锁的龙
+                        const availableDragons = this.sidekickManager.getAvailableSidekicks()
+                            .filter(type => !this.sidekickManager.isUnlocked(type));
+                        
+                        if (availableDragons.length > 0) {
+                            // 随机选择一个新龙解锁
+                            const newDragonType = availableDragons[Math.floor(Math.random() * availableDragons.length)];
+                            if (this.unlockSidekick(newDragonType)) {
+                                this.particleSystem.createText(
+                                    this.guardian.x + this.guardian.width / 2,
+                                    this.guardian.y - 20,
+                                    `解锁新龙助手!`,
+                                    '#9b59b6',
+                                    20,
+                                    90
+                                );
+                            }
+                        }
+                    } else {
+                        // 如果没有空位，提升现有龙的攻击力
+                        for (const sidekick of this.activeSidekicks) {
+                            sidekick.damage *= 1.1; // 提升10%攻击力
+                            this.particleSystem.createText(
+                                sidekick.x + sidekick.width / 2,
+                                sidekick.y - 20,
+                                `龙之力提升10%!`,
+                                sidekick.color,
+                                16,
+                                60
+                            );
+                        }
+                    }
+                }
+                break;
+                
+            case 'life_crystal':
+                this.permanentUpgrades.lifeCrystals++;
+                this.particleSystem.createText(
+                    item.x,
+                    item.y,
+                    `生命水晶! ${this.permanentUpgrades.lifeCrystals}/5`,
+                    '#2ecc71'
+                );
+                
+                // Check if we have enough crystals to upgrade
+                if (this.permanentUpgrades.lifeCrystals >= 5) {
+                    this.permanentUpgrades.lifeCrystals = 0;
+                    
+                    // Increase max lives (up to the maximum)
+                    if (this.lives < 5) {
+                        this.lives++;
+                        this.particleSystem.createText(
+                            this.guardian.x + this.guardian.width / 2,
+                            this.guardian.y - 20,
+                            '生命值增加!',
+                            '#2ecc71'
+                        );
+                    }
+                }
+                break;
+        }
+        
+        // 确保在状态改变后立即保存
+        try {
+            this.savePermanentUpgrades();
+        } catch (error) {
+            console.error('Error saving permanent upgrades:', error);
+        }
+    }
+
     // Game over
     gameOver() {
-        console.log('Game over!');
+        console.log('Game over! Saving final state...');
+        
+        // Save permanent upgrades before changing state
+        this.savePermanentUpgrades();
+        
+        // Change state after saving
         this.state = 'gameover';
         
         // Update UI
@@ -954,7 +1111,27 @@ class Game {
                     16,
                     60
                 );
+                // Save progress when dragon levels up
+                this.savePermanentUpgrades();
             }
+        }
+    }
+
+    // Clear all game data from localStorage
+    clearAllGameData() {
+        console.log('Clearing all game data...');
+        try {
+            // Clear permanent upgrades
+            localStorage.removeItem('everwingPermanentUpgrades');
+            // Clear high score
+            localStorage.removeItem('everwingHighScore');
+            console.log('All game data cleared successfully');
+            
+            // Reset game state
+            this.loadSavedData();
+            this.resetGame();
+        } catch (error) {
+            console.error('Error clearing game data:', error);
         }
     }
 } 
