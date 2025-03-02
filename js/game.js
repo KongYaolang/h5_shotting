@@ -94,6 +94,11 @@ class Game {
         this.gameTime++;
         
         if (this.state === 'playing') {
+            // Check if we should start a new wave
+            if (this.monsters.length === 0 && this.monstersDefeated >= this.monstersInWave) {
+                this.startNewWave();
+            }
+            
             // Update guardian
             this.guardian.update(this.width);
             
@@ -177,6 +182,8 @@ class Game {
                 
                 // Check if monster is at bottom of screen
                 if (monster.isAtBottom(this.height)) {
+                    // Track monsters defeated
+                    this.monstersDefeated++;
                     // Remove monster
                     this.monsters.splice(i, 1);
                     continue;
@@ -427,11 +434,6 @@ class Game {
             
             // Update wave timer
             this.waveTimer++;
-            
-            // Check if it's time for a new wave
-            if (this.monsters.length === 0 && this.monstersDefeated >= this.monstersInWave) {
-                this.startNewWave();
-            }
             
             // Update particle system
             this.particleSystem.update();
