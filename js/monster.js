@@ -285,34 +285,26 @@ class MonsterFactory {
     }
     
     // Create a wave of monsters
-    static createWave(canvasWidth, wave, count = 5) { // 5 monsters per wave
+    static createWave(canvasWidth, wave, count = 5) {
         const monsters = [];
         let monsterType = 'normal';
         
-        // Determine if this is a boss or elite wave
-        if (wave % 10 === 0) { // Boss every 10 waves
+        // Determine monster type based on wave number
+        if (wave % 10 === 0) {
             monsterType = 'boss';
             count = 1; // Only one boss
-        } else if (wave % 5 === 0) { // Elite every 5 waves
+        } else if (wave % 5 === 0) {
             monsterType = 'elite';
             count = 3; // Fewer elite monsters
         }
         
-        // Determine monster width based on type
-        let width;
-        if (monsterType === 'elite') {
-            width = 70;
-        } else if (monsterType === 'boss') {
-            width = 120;
-        } else {
-            width = 50;
-        }
+        // Calculate spacing between monsters
+        const spacing = canvasWidth / (count + 1);
         
-        // Create monsters
+        // Create monsters in a row
         for (let i = 0; i < count; i++) {
-            // Calculate x position to space monsters evenly
-            const x = (canvasWidth - width) * (i + 1) / (count + 1);
-            const y = -100 - i * 50; // Start above the screen with spacing
+            const x = spacing * (i + 1);
+            const y = -100; // Start above the screen
             
             monsters.push(new Monster(x, y, monsterType, wave));
         }
