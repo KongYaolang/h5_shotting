@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Everwing Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #2c3e50;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #34495e;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            background-color: #2c3e50;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="startScreen" class="screen">
+            <h1>EverWing</h1>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameUI" class="screen">
+            <div class="stats">
+                <div class="score">Score: <span id="scoreValue">0</span></div>
+                <div class="coins">Coins: <span id="coinsValue">0</span></div>
+                <div class="lives">Lives: <span id="livesValue">3</span></div>
+            </div>
+        </div>
+        
+        <div id="gameOverScreen" class="screen">
+            <h2>Game Over</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Coins Collected: <span id="finalCoins">0</span></p>
+            <button id="restartButton">Restart Game</button>
+        </div>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/assets.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/bullet.js"></script>
+    <script src="js/item.js"></script>
+    <script src="js/monster.js"></script>
+    <script src="js/boss.js"></script>
+    <script src="js/sidekick.js"></script>
+    <script src="js/guardian.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
