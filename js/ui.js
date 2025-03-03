@@ -54,34 +54,25 @@ class UIManager {
 
     // Draw the in-game UI
     drawUI(context) {
-        // Draw score
-        context.fillStyle = '#ffffff';
-        context.font = 'bold 24px Arial';
-        context.textAlign = 'left';
-        context.fillText(`Score: ${this.game.score}`, 20, 30);
-        
-        // Draw coins
+        // Draw coins - only UI element in the top left
         context.fillStyle = '#f1c40f';
         context.beginPath();
-        context.arc(20, 60, 10, 0, Math.PI * 2);
+        context.arc(30, 30, 12, 0, Math.PI * 2);
         context.fill();
         
+        // Add a subtle glow effect to make it stand out
+        context.shadowColor = '#f1c40f';
+        context.shadowBlur = 6;
+        context.beginPath();
+        context.arc(30, 30, 12, 0, Math.PI * 2);
+        context.fill();
+        context.shadowBlur = 0;
+        
+        // Draw coin count
         context.fillStyle = '#ffffff';
+        context.font = 'bold 20px Arial';
         context.textAlign = 'left';
-        context.fillText(`${this.game.coins}`, 40, 68);
-        
-        // Draw lives
-        for (let i = 0; i < this.game.lives; i++) {
-            context.fillStyle = '#e74c3c';
-            context.beginPath();
-            context.arc(20 + i * 25, 90, 10, 0, Math.PI * 2);
-            context.fill();
-        }
-        
-        // Draw wave number
-        context.fillStyle = '#ffffff';
-        context.textAlign = 'right';
-        context.fillText(`Wave: ${this.game.wave}`, this.game.width - 20, 30);
+        context.fillText(`${this.game.coins}`, 50, 36);
         
         // Draw active powerups
         let powerupY = 60;
