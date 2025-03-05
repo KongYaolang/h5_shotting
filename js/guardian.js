@@ -33,14 +33,6 @@ class Guardian {
         const dx = this.targetX - this.x;
         const movement = dx * this.smoothingFactor;
         
-        console.log('Updating position:', {
-            currentX: this.x,
-            targetX: this.targetX,
-            dx: dx,
-            movement: movement,
-            smoothingFactor: this.smoothingFactor
-        });
-        
         this.x += movement;
         
         // Keep the guardian within the canvas bounds
@@ -154,11 +146,7 @@ class Guardian {
 
     // Set target position for movement
     setTargetPosition(x) {
-        console.log('Setting target position:', {
-            input: x,
-            current: this.x,
-            target: this.targetX
-        });
+       
         this.targetX = x - this.width / 2;
     }
 

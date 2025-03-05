@@ -143,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
             const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
             
-            console.log('Touch start:', { x, y, state: game.state });
             game.handleClick(x, y);
         }
     }, { passive: false });
@@ -158,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
             const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
             
-            console.log('Touch move:', { x, y, state: game.state });
             game.handleMouseMove(x, y);
         }
     }, { passive: false });

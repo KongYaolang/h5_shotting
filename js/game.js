@@ -1001,17 +1001,7 @@ class Game {
 
     // Handle mouse movement
     handleMouseMove(x, y) {
-        console.log('Game handling mouse move:', {
-            x,
-            y,
-            state: this.state,
-            guardian: this.guardian ? {
-                x: this.guardian.x,
-                y: this.guardian.y,
-                targetX: this.guardian.targetX
-            } : null
-        });
-        
+       
         if (this.state === 'playing') {
             this.guardian.setTargetPosition(x);
         }
@@ -1019,12 +1009,6 @@ class Game {
 
     // Handle mouse click
     handleClick(x, y) {
-        console.log('Game handling click:', {
-            x,
-            y,
-            state: this.state,
-            uiManager: this.uiManager ? true : false
-        });
         
         if (this.state === 'menu') {
             // Check if start button was clicked
