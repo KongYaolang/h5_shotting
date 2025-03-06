@@ -4,7 +4,6 @@ const terser = require('terser');
 const CleanCSS = require('clean-css');
 const imagemin = require('imagemin');
 const imageminPngquant = require('imagemin-pngquant');
-const imageminWebp = require('imagemin-webp');
 
 // JavaScript files to be combined and minified
 const jsFiles = [
@@ -24,32 +23,52 @@ const jsFiles = [
 
 // Create dist directory if it doesn't exist
 if (!fs.existsSync('dist')) {
-    fs.mkdirSync('dist');
-    fs.mkdirSync('dist/js');
-    fs.mkdirSync('dist/css');
-    fs.mkdirSync('dist/assets');
+    try {
+        fs.mkdirSync('dist');
+        fs.mkdirSync('dist/js');
+        fs.mkdirSync('dist/css');
+        fs.mkdirSync('dist/assets');
+        if (!fs.existsSync('dist/assets/images')) {
+            fs.mkdirSync('dist/assets/images');
+        }
+    } catch (error) {
+        console.error('Error creating directories:', error);
+        process.exit(1);
+    }
 }
 
 // Minify JavaScript
 async function minifyJS() {
     console.log('Minifying JavaScript...');
-    const code = {};
-    
-    for (const file of jsFiles) {
-        code[file] = fs.readFileSync(file, 'utf8');
+    try {
+        const code = {};
+        
+        for (const file of jsFiles) {
+            if (!fs.existsSync(file)) {
+                throw new Error(`File not found: ${file}`);
+            }
+            code[file] = fs.readFileSync(file, 'utf8');
+        }
+        
+        const minified = await terser.minify(code, {
+            compress: {
+                dead_code: true,
+                drop_console: false,  // Keep console logs for debugging
+                drop_debugger: true
+            },
+            mangle: true
+        });
+        
+        if (!minified || !minified.code) {
+            throw new Error('JavaScript minification failed');
+        }
+        
+        fs.writeFileSync('dist/js/game.min.js', minified.code);
+        console.log('JavaScript minification complete');
+    } catch (error) {
+        console.error('JavaScript minification failed:', error);
+        process.exit(1);
     }
-    
-    const minified = await terser.minify(code, {
-        compress: {
-            dead_code: true,
-            drop_console: true,
-            drop_debugger: true
-        },
-        mangle: true
-    });
-    
-    fs.writeFileSync('dist/js/game.min.js', minified.code);
-    console.log('JavaScript minification complete');
 }
 
 // Minify CSS
@@ -64,28 +83,45 @@ function minifyCSS() {
 // Optimize images
 async function optimizeImages() {
     console.log('Optimizing images...');
-    
-    // Optimize PNG images
-    await imagemin(['assets/images/*.png'], {
-        destination: 'dist/assets/images',
-        plugins: [
-            imageminPngquant({
-                quality: [0.6, 0.8]
-            })
-        ]
-    });
-    
-    // Convert to WebP
-    await imagemin(['assets/images/*.png'], {
-        destination: 'dist/assets/images',
-        plugins: [
-            imageminWebp({
-                quality: 75
-            })
-        ]
-    });
-    
-    console.log('Image optimization complete');
+    try {
+        if (!fs.existsSync('assets/images')) {
+            console.log('No images to optimize');
+            return;
+        }
+
+        // Ensure target directory exists
+        if (!fs.existsSync('dist/assets/images')) {
+            fs.mkdirSync('dist/assets/images', { recursive: true });
+        }
+
+        // Copy images if optimization fails
+        const images = fs.readdirSync('assets/images').filter(file => file.endsWith('.png'));
+        for (const image of images) {
+            fs.copyFileSync(
+                path.join('assets/images', image),
+                path.join('dist/assets/images', image)
+            );
+        }
+
+        // Try to optimize images
+        try {
+            await imagemin(['assets/images/*.png'], {
+                destination: 'dist/assets/images',
+                plugins: [
+                    imageminPngquant({
+                        quality: [0.6, 0.8]
+                    })
+                ]
+            });
+        } catch (error) {
+            console.warn('PNG optimization failed, using original images:', error);
+        }
+
+        console.log('Image processing complete');
+    } catch (error) {
+        console.error('Image processing failed:', error);
+        process.exit(1);
+    }
 }
 
 // Copy and update index.html
@@ -134,6 +170,7 @@ async function build() {
         console.log('Build completed successfully!');
     } catch (error) {
         console.error('Build failed:', error);
+        process.exit(1);
     }
 }
 
