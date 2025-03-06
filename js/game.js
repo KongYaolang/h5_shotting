@@ -309,6 +309,10 @@ class Game {
                             30
                         );
                         
+                        // Track monsters defeated and generate drops
+                        this.monstersDefeated++;
+                        this.generateDrops(monster);
+                        
                         // Remove monster
                         this.monsters.splice(i, 1);
                     } else {
@@ -668,29 +672,47 @@ class Game {
     drawShieldEffect() {
         this.context.save();
         
-        // Create pulsing effect
+        // 创建脉冲效果
         const pulseSize = Math.sin(this.gameTime * 0.1) * 5;
-        const radius = Math.max(this.guardian.width, this.guardian.height) / 2 + 10 + pulseSize;
+        const radius = Math.max(this.guardian.width, this.guardian.height) / 2 + 15 + pulseSize;
         
-        // Draw shield
+        // 绘制外圈防护罩
         this.context.strokeStyle = '#3498db';
         this.context.lineWidth = 3;
         this.context.globalAlpha = 0.7;
+        
+        // 旋转的防护罩效果
+        const segments = 8;
+        const rotationSpeed = this.gameTime * 0.02;
+        
+        for (let i = 0; i < segments; i++) {
+            const startAngle = (i / segments) * Math.PI * 2 + rotationSpeed;
+            const endAngle = ((i + 0.7) / segments) * Math.PI * 2 + rotationSpeed;
+            
+            this.context.beginPath();
+            this.context.arc(
+                this.guardian.x + this.guardian.width / 2,
+                this.guardian.y + this.guardian.height / 2,
+                radius,
+                startAngle,
+                endAngle
+            );
+            this.context.stroke();
+        }
+        
+        // 添加内圈发光效果
+        this.context.shadowColor = '#3498db';
+        this.context.shadowBlur = 15;
+        this.context.globalAlpha = 0.3;
         
         this.context.beginPath();
         this.context.arc(
             this.guardian.x + this.guardian.width / 2,
             this.guardian.y + this.guardian.height / 2,
-            radius,
+            radius - 5,
             0,
             Math.PI * 2
         );
-        this.context.stroke();
-        
-        // Add glow effect
-        this.context.shadowColor = '#3498db';
-        this.context.shadowBlur = 15;
-        this.context.globalAlpha = 0.3;
         this.context.stroke();
         
         this.context.restore();
@@ -788,8 +810,37 @@ class Game {
         // Update shield effect
         if (this.powerupEffects.shield.active) {
             this.powerupEffects.shield.duration--;
+            
+            // 当防护罩激活时，只加速非Boss怪物
+            for (const monster of this.monsters) {
+                if (monster.type !== 'boss') {  // 使用更直接的方式检查是否为BOSS
+                    monster.setSpeedMultiplier(1.0);  // 增加50%速度
+                } else {
+                    monster.setSpeedMultiplier(1.0);  // 确保BOSS保持正常速度
+                }
+            }
+            
             if (this.powerupEffects.shield.duration <= 0) {
                 this.powerupEffects.shield.active = false;
+                // 防护罩结束时，恢复所有怪物速度
+                for (const monster of this.monsters) {
+                    monster.setSpeedMultiplier(1.0);
+                }
+            }
+            
+            // 每隔一段时间创建防护罩粒子效果
+            if (this.gameTime % 5 === 0) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 40;
+                const x = this.guardian.x + this.guardian.width / 2 + Math.cos(angle) * radius;
+                const y = this.guardian.y + this.guardian.height / 2 + Math.sin(angle) * radius;
+                
+                this.particleSystem.createExplosion(
+                    x,
+                    y,
+                    '#3498db',  // 蓝色
+                    5  // 较少的粒子数量
+                );
             }
         }
         

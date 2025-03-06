@@ -11,6 +11,11 @@ class Monster {
         this.animationTimer = 0;
         this.hitAnimationTimer = 0;
         this.wave = wave;
+        this.width = 40;
+        this.height = 40;
+        this.baseSpeed = 2;  // 添加基础速度属性
+        this.speed = this.baseSpeed;
+        this.speedMultiplier = 1;  // 添加速度倍率
         
         // Calculate wave scaling factor - more balanced progression
         const waveScaling = Math.pow(wave, 0.8); // Slightly reduced exponential scaling
@@ -19,7 +24,8 @@ class Monster {
         if (type === 'boss') {
             this.width = 120;
             this.height = 120;
-            this.speed = 0.8;
+            this.speed = 1.0;  // 设置BOSS固定速度为1.0
+            this.targetY = 50;  // 设置BOSS的目标停留位置
             // More balanced boss health scaling
             this.health = 60 + Math.floor(wave / 3) * 15; // Base health + increase per 3 waves
             this.color = '#9b59b6'; // Purple
@@ -62,80 +68,48 @@ class Monster {
         this.maxHealth = this.health;
     }
 
-    // Update monster position and state
+    // Update monster position
     update(guardianX) {
         if (!this.active) return;
         
-        // Move monster down
+        // BOSS 和普通怪物的移动逻辑分开处理
         if (this.type === 'boss') {
-            // Boss should stay at the top of the screen
-            if (this.y < 50) {
-                // Move down until reaching the desired position
+            // 如果BOSS还没有到达目标位置，继续向下移动
+            if (this.y < this.targetY) {
                 this.y += this.speed;
             } else {
-                // Once in position, only move horizontally
-                // Add slight vertical movement for visual effect
-                this.y = 50 + Math.sin(this.animationTimer * 0.05) * 10;
-                
-                // More aggressive horizontal movement
+                // 到达目标位置后，只在水平方向移动
                 if (guardianX) {
-                    // Target player with some randomness
-                    const targetX = guardianX - this.width / 2;
-                    const distanceToTarget = targetX - this.x;
-                    
-                    // Health-based movement speed
-                    const healthPercentage = this.health / this.maxHealth;
-                    let moveSpeed = this.speed * 0.8;
-                    
-                    // Faster movement when low health
-                    if (healthPercentage < 0.3) {
-                        moveSpeed = this.speed * 1.5;
-                    } else if (healthPercentage < 0.6) {
-                        moveSpeed = this.speed * 1.2;
+                    // 计算到玩家的水平距离
+                    const dx = guardianX - (this.x + this.width / 2);
+                    // 缓慢向玩家方向移动，限制移动范围
+                    const newX = this.x + Math.sign(dx) * this.speed * this.speedMultiplier;
+                    // 确保BOSS不会移出屏幕
+                    if (newX >= 0 && newX <= 800 - this.width) {  // 假设画布宽度为800，根据实际情况调整
+                        this.x = newX;
                     }
-                    
-                    // Move toward player with some randomness
-                    if (Math.abs(distanceToTarget) > 20) {
-                        // Move toward player
-                        this.x += Math.sign(distanceToTarget) * moveSpeed;
-                    } else {
-                        // Random movement when close to target
-                        this.x += (Math.random() - 0.5) * moveSpeed * 2;
-                    }
-                    
-                    // Every 2 seconds, make a sudden movement to surprise the player
-                    if (this.animationTimer % 120 === 0) {
-                        this.x += (Math.random() - 0.5) * 50;
-                    }
-                } else {
-                    // Fallback to sine wave movement if no guardian position
-                    this.x += Math.sin(this.animationTimer * 0.02) * 2;
                 }
             }
             
-            // Keep boss within screen bounds
-            if (this.x < 0) this.x = 0;
-            if (this.x > 400 - this.width) this.x = 400 - this.width;
+            // 更新攻击计时器
+            if (this.attackTimer < this.attackInterval) {
+                this.attackTimer++;
+            }
         } else {
-            // Normal monsters move down as usual
-            this.y += this.speed;
+            // 普通怪物继续使用原来的下落逻辑
+            this.y += this.speed * this.speedMultiplier;
         }
         
-        // Update animation
+        // 更新动画
         this.animationTimer++;
-        if (this.animationTimer >= 10) { // Animation speed
-            this.animationFrame = (this.animationFrame + 1) % 4;
+        if (this.animationTimer >= 10) {
             this.animationTimer = 0;
+            this.animationFrame = (this.animationFrame + 1) % 4;
         }
         
-        // Update hit animation
+        // 更新受击动画计时器
         if (this.hitAnimationTimer > 0) {
             this.hitAnimationTimer--;
-        }
-        
-        // Update boss attack timer
-        if (this.type === 'boss') {
-            this.attackTimer++;
         }
     }
 
@@ -421,6 +395,13 @@ class Monster {
             return '#e74c3c'; // Red
         }
     }
+
+    // 添加新方法：设置速度倍率
+    setSpeedMultiplier(multiplier) {
+        if (!this.isBoss()) {  // 只对非 Boss 怪物生效
+            this.speedMultiplier = multiplier;
+        }
+    }
 }
 
 /**
@@ -441,9 +422,9 @@ class MonsterFactory {
         // 确定这一波是否是BOSS波
         if (wave % 10 === 0) { // Boss every 10 waves (was 5)
             console.log(`[MonsterFactory] Wave ${wave} is a boss wave`);
-            // BOSS波只有一个BOSS
+            // BOSS波只有一个BOSS，从屏幕上方进入
             const x = canvasWidth / 2 - 60;
-            const y = -120;
+            const y = -120;  // 从屏幕上方开始
             monsters.push(new Monster(x, y, 'boss', wave));
             return monsters;
         }
