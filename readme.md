@@ -1,6 +1,7 @@
 # EverWing Clone
 
 An HTML5 and JavaScript vertical scroll shooter game inspired by EverWing.
+https://wonderful-cajeta-eb3c68.netlify.app/
 
 ## Game Features
 
